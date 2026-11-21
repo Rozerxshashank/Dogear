@@ -1,13 +1,21 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import { WikilinkExtension } from '../components/WikilinkExtension';
 import { getNoteContent, keepCaretOutOfTitleHeading, looksLikeLegacyHtml, setNoteContent, syncTitleHeading, titleHeadingMatches } from '../markdown';
 
+// Editors schedule DOM work on timers; destroy them so nothing fires after the
+// test environment is torn down (that caused intermittent "document is not defined").
+const editors: Editor[] = [];
 function makeEditor() {
-  return new Editor({ extensions: [StarterKit, Markdown, WikilinkExtension] });
+  const editor = new Editor({ extensions: [StarterKit, Markdown, WikilinkExtension] });
+  editors.push(editor);
+  return editor;
 }
+afterEach(() => {
+  while (editors.length) editors.pop()!.destroy();
+});
 
 describe('note markdown round-trip', () => {
   test('standard markdown survives load and save', () => {
