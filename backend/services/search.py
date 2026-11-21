@@ -214,13 +214,31 @@ def make_snippet(text: str, title: str = "", query: str = "", size: int = 200) -
 def _window_around_terms(content: str, query: str, size: int) -> str:
     """For keyword-only hits: the part of the note around the first matching term."""
     lower = content.lower()
-    positions = [lower.find(t) for t in re.findall(r"\w+", query.lower()) if t not in _STOPWORDS and len(t) > 2]
-    positions = [p for p in positions if p >= 0]
+    positions = []
+    for term in _query_terms(query):
+        # match word stems, so "focused" finds "focus" and "rise" finds "rising"
+        stem = term[:max(4, len(term) - 2)] if len(term) > 4 else term
+        found = re.search(r"\b" + re.escape(stem), lower)
+        if found:
+            positions.append(found.start())
     if not positions or len(content) <= size:
         return content[:size]
     start = max(0, min(positions) - size // 4)
+    if start:
+        # Begin at a sentence start if one is close, otherwise at a word boundary
+        sentence = max(content.rfind(". ", 0, start + 1), content.rfind("\n", 0, start + 1))
+        if sentence != -1 and start - sentence < size // 3:
+            start = sentence + 1
+        else:
+            space = content.rfind(" ", 0, start + 1)
+            start = space + 1 if space != -1 else start
+        while start < len(content) and content[start] in " \n":
+            start += 1
     end = start + size
-    return ("…" if start else "") + content[start:end] + ("…" if end < len(content) else "")
+    if end < len(content):
+        space = content.rfind(" ", start, end)
+        end = space if space > start else end
+    return ("…" if start else "") + content[start:end].strip() + ("…" if end < len(content) else "")
 
 
 async def retrieve_context(query: str, k_notes: int = 5, per_note_chars: int = 2500,

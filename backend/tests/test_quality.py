@@ -108,3 +108,12 @@ async def test_precise_searches_do_not_list_unrelated_notes(sample_notes):
     # ...while broader questions still surface related notes
     related = [r["title"] for r in await search.hybrid_search("tips for staying focused at work", k=10)]
     assert related[:2] == ["Deep Work", "Four Thousand Weeks"]
+
+
+async def test_snippets_start_and_end_on_word_boundaries():
+    text = "First sentence about nothing much. " * 6 + "The ability to focus without distraction is rare. " + "Tail words here. " * 8
+    snippet = search.make_snippet(text, "", "focus distraction", size=120)
+    body = snippet.strip("…")
+    assert body.split()[0][0].isupper() or body.split()[0] in text.split()  # no cut-off first word
+    assert all(word in text.split() for word in body.split()[:1] + body.split()[-1:])
+    assert "focus" in snippet
