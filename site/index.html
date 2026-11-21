@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SmartNotes: Private Markdown Notes App for Mac</title>
+  <title>Dogear: Private Markdown Notes App for Mac</title>
   <meta name="description" content="Free, open-source Markdown notes app for Mac. Search notes by meaning, link ideas, import Obsidian vaults and read notes on your phone. Works offline." />
   <meta name="google-site-verification" content="sXowhJEmyh366PV-L9-GSXqof-fmQYWh2pqUjsidgpE" />
   <link rel="canonical" href="https://rozerxshashank.github.io/Smartnotes-poc/" />
   <meta name="theme-color" content="#f6f4ef" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="SmartNotes" />
+  <meta property="og:site_name" content="Dogear" />
   <meta property="og:url" content="https://rozerxshashank.github.io/Smartnotes-poc/" />
-  <meta property="og:title" content="SmartNotes: Private Markdown Notes App for Mac" />
+  <meta property="og:title" content="Dogear: Private Markdown Notes App for Mac" />
   <meta property="og:description" content="Plain Markdown files on your Mac, searchable by meaning, on your phone without the cloud. Free and open source." />
   <meta property="og:image" content="https://rozerxshashank.github.io/Smartnotes-poc/img/social.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="SmartNotes: notes that find themselves. A private Markdown notes app for Mac." />
+  <meta property="og:image:alt" content="Dogear: notes that find themselves. A private Markdown notes app for Mac." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SmartNotes: Private Markdown Notes App for Mac" />
+  <meta name="twitter:title" content="Dogear: Private Markdown Notes App for Mac" />
   <meta name="twitter:description" content="Plain Markdown files on your Mac, searchable by meaning. Free and open source." />
   <meta name="twitter:image" content="https://rozerxshashank.github.io/Smartnotes-poc/img/social.png" />
 
@@ -27,13 +27,13 @@
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "SmartNotes",
+  "name": "Dogear",
   "description": "A local-first Markdown notes app for Mac with search by meaning, linked notes, Obsidian import and phone access over your home Wi-Fi.",
   "applicationCategory": "ProductivityApplication",
   "operatingSystem": "macOS 12 or later (Apple Silicon)",
-  "softwareVersion": "1.1.0",
+  "softwareVersion": "1.2.0",
   "url": "https://rozerxshashank.github.io/Smartnotes-poc/",
-  "downloadUrl": "https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/SmartNotes-mac-arm64.dmg",
+  "downloadUrl": "https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/Dogear-mac-arm64.dmg",
   "image": "https://rozerxshashank.github.io/Smartnotes-poc/img/social.png",
   "screenshot": [
     "https://rozerxshashank.github.io/Smartnotes-poc/img/editor.jpg",
@@ -177,6 +177,7 @@
     .closing-box { border-top: 1px solid var(--ink); padding-top: 40px; display: flex; justify-content: space-between; align-items: end; gap: 32px; flex-wrap: wrap; }
     .closing h2 { font-size: clamp(30px, 4vw, 42px); max-width: 16ch; line-height: 1.12; }
     .closing p { color: var(--ink-soft); margin: 14px 0 0; max-width: 460px; }
+    .closing .name-note { font-family: var(--serif); font-style: italic; color: var(--ink-faint); font-size: 17px; }
 
     footer { border-top: 1px solid var(--rule); padding: 26px 0 40px; font-size: 14px; color: var(--ink-faint); }
     footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -226,7 +227,7 @@
 <body>
   <div class="wrap">
     <header class="top">
-      <a class="wordmark" href="#"><img src="img/favicon.png" width="28" height="28" alt="" />SmartNotes</a>
+      <a class="wordmark" href="#"><img src="img/favicon.png" width="28" height="28" alt="" />Dogear</a>
       <nav aria-label="Main">
         <a href="#search">Search</a>
         <a href="#phone">Phone</a>
@@ -242,17 +243,17 @@
           <p class="category">Markdown notes app for Mac</p>
           <h1>Notes that find themselves.</h1>
           <p class="lede">
-            SmartNotes keeps everything you write as ordinary Markdown files on your Mac, then lets you search them
-            by what you meant instead of the exact words you used. No account, no subscription, and it works offline.
+            Dogear keeps everything you write as ordinary Markdown files on your Mac, then finds it again by what
+            you meant instead of the exact words you used. No account, no subscription, and it works offline.
           </p>
           <div class="get">
             <a class="btn" data-download
-               href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/SmartNotes-mac-arm64.dmg">
+               href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/Dogear-mac-arm64.dmg">
               <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.7-1.2 1.9-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg>
               Download for Mac
             </a>
             <div class="get-meta">
-              <strong data-version>Version 1.1</strong> · <span data-size>Free</span><br />
+              <strong data-version>Version 1.2</strong> · <span data-size>Free</span><br />
               Apple Silicon (M1 or newer), macOS 12+
             </div>
           </div>
@@ -262,7 +263,7 @@
         <figure class="hero-shot" style="margin-left:0;margin-right:0">
           <div class="frame">
             <img src="img/editor.jpg" width="1904" height="1200"
-                 alt="SmartNotes showing a sidebar of folders (Home, Journal, Reading, Work) and an open note called Q3 planning with headings, a bulleted list and links to other notes." />
+                 alt="Dogear showing a sidebar of folders (Home, Journal, Reading, Work) and an open note called Q3 planning with headings, a bulleted list and links to other notes." />
           </div>
           <figcaption class="caption">Folders on the left are real folders on disk. The green links are ordinary [[wikilinks]].</figcaption>
         </figure>
@@ -274,7 +275,7 @@
             <h2>You remember the idea, not the wording.</h2>
             <p>
               Six months from now you won't recall whether you wrote "focus", "distraction" or "deep work". You'll
-              remember roughly what it was about. So that's how SmartNotes searches.
+              remember roughly what it was about. So that's how Dogear searches.
             </p>
             <p>
               It reads every note for meaning, then combines that with ordinary keyword search. All of it runs on
@@ -293,16 +294,16 @@
           <div>
             <h2>Your notes are files. That's the point.</h2>
             <p>
-              Every note is a <code>.md</code> file in <code>Documents/SmartNotes</code>, in the folders you'd expect.
-              Open them in any editor, sync them however you like, or stop using SmartNotes tomorrow and keep everything.
+              Every note is a <code>.md</code> file in <code>Documents/Dogear</code>, in the folders you'd expect.
+              Open them in any editor, sync them however you like, or stop using Dogear tomorrow and keep everything.
             </p>
             <ul class="facts">
-              <li><b>Edit anywhere</b><span>Change a file in another app and SmartNotes picks it up within a second.</span></li>
+              <li><b>Edit anywhere</b><span>Change a file in another app and Dogear picks it up within a second.</span></li>
               <li><b>Coming from Obsidian</b><span>Import your vault. Folders and [[links]] come across as they are.</span></li>
               <li><b>Backups</b><span>Push to a private GitHub repository from inside the app.</span></li>
             </ul>
           </div>
-          <pre class="tree" aria-label="Example folder structure"><span class="dir">Documents/SmartNotes/</span>
+          <pre class="tree" aria-label="Example folder structure"><span class="dir">Documents/Dogear/</span>
 ├── Inbox.md
 ├── <span class="dir">Home/</span>
 │   ├── Apartment move.md
@@ -332,10 +333,10 @@ Open questions: see [[Pricing notes]].</span></pre>
             <h2>Your notes on your phone. No cloud.</h2>
             <p>
               Most apps that keep notes on your computer make you pay for sync, or hand your notes to someone's server.
-              SmartNotes skips both: your phone talks straight to your Mac over your home Wi-Fi.
+              Dogear skips both: your phone talks straight to your Mac over your home Wi-Fi.
             </p>
             <ol class="steps">
-              <li>In SmartNotes on your Mac, open <b>Settings → Phone</b> and turn it on.</li>
+              <li>In Dogear on your Mac, open <b>Settings → Phone</b> and turn it on.</li>
               <li>Point your phone's camera at the QR code. That's the whole setup. No app to install, no account.</li>
               <li>Read, search and write notes from your phone. Changes show up on your Mac straight away.</li>
             </ol>
@@ -344,7 +345,7 @@ Open questions: see [[Pricing notes]].</span></pre>
               overwrites unsaved changes on your Mac.
             </p>
           </div>
-          <div class="phones" aria-label="SmartNotes on a phone">
+          <div class="phones" aria-label="Dogear on a phone">
             <div class="phone">
               <img src="img/phone-search.jpg" width="780" height="1688" loading="lazy"
                    alt="Phone search for 'how long should bread rise' with Sourdough as the first result." />
@@ -385,7 +386,7 @@ Open questions: see [[Pricing notes]].</span></pre>
           </div>
         </details>
         <details>
-          <summary>What happens if I stop using SmartNotes?</summary>
+          <summary>What happens if I stop using Dogear?</summary>
           <div>
             <p>Nothing happens to your notes. They're Markdown files in a normal folder. Delete the app and they're
             still there, readable by any text editor, Obsidian, iA Writer or whatever you move to next.</p>
@@ -396,7 +397,7 @@ Open questions: see [[Pricing notes]].</span></pre>
           <div>
             <p>This early version isn't notarized by Apple yet, which costs a paid developer account we haven't set up.
             macOS shows a warning for any app in that state.</p>
-            <p>To open it: drag SmartNotes into Applications, then right-click it and choose <b>Open</b>. If macOS still
+            <p>To open it: drag Dogear into Applications, then right-click it and choose <b>Open</b>. If macOS still
             refuses, go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>. You only need to do this once.</p>
           </div>
         </details>
@@ -419,7 +420,7 @@ Open questions: see [[Pricing notes]].</span></pre>
           <summary>Can I use it with Obsidian?</summary>
           <div>
             <p>Yes. Import a vault in Settings and its folders and [[wikilinks]] come across as they are. Or keep both:
-            open <code>Documents/SmartNotes</code> as a vault in Obsidian and both apps work on the same Markdown files.
+            open <code>Documents/Dogear</code> as a vault in Obsidian and both apps work on the same Markdown files.
             Changes made in one show up in the other.</p>
           </div>
         </details>
@@ -427,7 +428,7 @@ Open questions: see [[Pricing notes]].</span></pre>
           <summary>Is there a phone app?</summary>
           <div>
             <p>You don't need one. Turn on <b>Settings → Phone</b> on your Mac and scan the QR code: your phone opens
-            SmartNotes in its browser, and you can add it to your home screen so it works like an app.</p>
+            Dogear in its browser, and you can add it to your home screen so it works like an app.</p>
             <p>It works while your Mac is awake and on the same Wi-Fi. Traffic on your Wi-Fi isn't encrypted, so use it
             on networks you trust, like home. You can disconnect a phone from Settings at any time.</p>
           </div>
@@ -446,9 +447,10 @@ Open questions: see [[Pricing notes]].</span></pre>
           <div>
             <h2>Try it with the notes you already have.</h2>
             <p>Point it at an existing folder of Markdown or an Obsidian vault and see what it finds. It takes about a minute.</p>
+            <p class="name-note">A dog-ear is the corner you fold down so you can find a page again. That's the whole idea.</p>
           </div>
           <a class="btn" data-download
-             href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/SmartNotes-mac-arm64.dmg">Download for Mac</a>
+             href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/Dogear-mac-arm64.dmg">Download for Mac</a>
         </div>
       </section>
     </main>
@@ -456,7 +458,7 @@ Open questions: see [[Pricing notes]].</span></pre>
 
   <footer>
     <div class="wrap">
-      <span>SmartNotes is an early, open-source project. Found a bug? <a href="https://github.com/Rozerxshashank/Smartnotes-poc/issues">Tell us</a>.</span>
+      <span>Dogear (formerly SmartNotes) is an early, open-source project. Found a bug? <a href="https://github.com/Rozerxshashank/Smartnotes-poc/issues">Tell us</a>.</span>
       <span><a href="https://github.com/Rozerxshashank/Smartnotes-poc">Source</a> · <a href="https://github.com/Rozerxshashank/Smartnotes-poc/releases">Release notes</a></span>
     </div>
   </footer>
@@ -465,7 +467,7 @@ Open questions: see [[Pricing notes]].</span></pre>
     // Visitors on a phone can't install a Mac app: tell them what to do instead.
     if (/iPhone|iPad|Android/i.test(navigator.userAgent)) {
       document.querySelector('.first-run').textContent =
-        'SmartNotes runs on Mac. Open this page on your Mac to download it, or bookmark it for later.';
+        'Dogear runs on Mac. Open this page on your Mac to download it, or bookmark it for later.';
     }
 
     // Fill in the real version and size from the latest GitHub release.

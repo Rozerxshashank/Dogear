@@ -72,7 +72,7 @@ def write_atomic(path: str, content: str):
     """
     directory = os.path.dirname(path)
     os.makedirs(directory, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".smartnotes-", suffix=".tmp")
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".dogear-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             f.write(content)

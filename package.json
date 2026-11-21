@@ -1,7 +1,7 @@
 {
-  "name": "smartnotes",
-  "version": "1.1.0",
-  "description": "SmartNotes - A fully local semantic search and RAG-based markdown notes app.",
+  "name": "dogear",
+  "version": "1.2.0",
+  "description": "Dogear: a local-first Markdown notes app for Mac with search by meaning and phone access.",
   "main": "dist/src/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -48,10 +48,10 @@
     "vitest": "^3.2.7",
     "zustand": "^5.0.14"
   },
-  "author": "SmartNotes",
+  "author": "Dogear",
   "build": {
-    "appId": "app.smartnotes.desktop",
-    "productName": "SmartNotes",
+    "appId": "app.dogear.desktop",
+    "productName": "Dogear",
     "directories": {
       "output": "release"
     },
@@ -62,7 +62,7 @@
     ],
     "extraResources": [
       {
-        "from": "dist-backend/smartnotes-backend",
+        "from": "dist-backend/dogear-backend",
         "to": "backend"
       },
       {
@@ -112,7 +112,7 @@
     },
     "artifactName": "${productName}-${os}-${arch}.${ext}",
     "dmg": {
-      "title": "SmartNotes ${version}"
+      "title": "Dogear ${version}"
     }
   },
   "engines": {

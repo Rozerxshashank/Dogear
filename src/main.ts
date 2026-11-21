@@ -10,8 +10,9 @@ import { getAllSecrets, getSecret, setSecret } from './secrets';
 import * as gitSync from './gitSync';
 import * as QRCode from 'qrcode';
 import { PhoneServer, lanAddresses } from './phoneServer';
+import { migrateFromSmartNotes, MigrationResult } from './migrateFromSmartNotes';
 
-// Only one SmartNotes may run at a time: two backends would fight over the same files.
+// Only one Dogear may run at a time: two backends would fight over the same files.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
@@ -25,7 +26,8 @@ const backendRestarts: number[] = [];
 const dirtyNoteIds = new Set<string>();
 const ipcToken = crypto.randomBytes(32).toString('hex');
 
-const SMARTNOTES_DIR = process.env.SMARTNOTES_DIR || path.join(app.getPath('documents'), 'SmartNotes');
+const SMARTNOTES_DIR = process.env.SMARTNOTES_DIR || path.join(app.getPath('documents'), 'Dogear');
+let migration: MigrationResult = { notesMovedFrom: null, dataCopied: [], secretsNeedReentry: false };
 const RENAME_WINDOW_MS = 2000;
 
 const backendUrl = () => `http://127.0.0.1:${backendPort}`;
@@ -79,7 +81,7 @@ function pollHealthCheck(timeoutMs = 60000): Promise<boolean> {
 /** The command that starts the backend: bundled binary when packaged, venv python in dev. */
 function backendCommand(): { cmd: string; args: string[]; cwd: string } {
   if (app.isPackaged) {
-    const exe = process.platform === 'win32' ? 'smartnotes-backend.exe' : 'smartnotes-backend';
+    const exe = process.platform === 'win32' ? 'dogear-backend.exe' : 'dogear-backend';
     const dir = path.join(process.resourcesPath, 'backend');
     return { cmd: path.join(dir, exe), args: [], cwd: dir };
   }
@@ -105,6 +107,7 @@ function spawnBackend() {
       SMARTNOTES_DATA_DIR: app.getPath('userData'),
       SMARTNOTES_PORT: String(backendPort),
       SMARTNOTES_PARENT_PID: String(process.pid),
+      ...(migration.notesMovedFrom ? { SMARTNOTES_PREVIOUS_DIR: migration.notesMovedFrom } : {}),
       PYTHONPATH: app.isPackaged ? '' : app.getAppPath(),
       PYTHONUNBUFFERED: '1',
       SMARTNOTES_MODELS_DIR: app.isPackaged
@@ -371,7 +374,42 @@ app.on('second-instance', () => {
   }
 });
 
+/** SmartNotes was renamed Dogear: bring existing users' notes and data across (once). */
+function runRenameMigration() {
+  if (process.env.SMARTNOTES_DIR) return; // custom folder (tests, power users): leave it alone
+  try {
+    migration = migrateFromSmartNotes({
+      oldNotesDir: path.join(app.getPath('documents'), 'SmartNotes'),
+      newNotesDir: SMARTNOTES_DIR,
+      oldDataDir: path.join(app.getPath('appData'), 'SmartNotes'),
+      newDataDir: app.getPath('userData'),
+    });
+    if (migration.notesMovedFrom || migration.dataCopied.length) {
+      log(`[Rename] notes moved from ${migration.notesMovedFrom ?? '(none)'}; copied ${migration.dataCopied.join(', ')}`);
+    }
+  } catch (e) {
+    log(`[Rename] migration failed: ${(e as Error).message}`);
+  }
+}
+
+function explainRename() {
+  if (!mainWindow || (!migration.notesMovedFrom && !migration.dataCopied.length)) return;
+  const lines = ['SmartNotes is now called Dogear. Everything you had is still here.'];
+  if (migration.notesMovedFrom) lines.push(`Your notes folder moved to ${SMARTNOTES_DIR}.`);
+  if (migration.secretsNeedReentry) {
+    lines.push('For security, saved API keys and your GitHub token have to be entered again in Settings.');
+  }
+  lines.push('You can delete the old SmartNotes app.');
+  void dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    message: 'Welcome to Dogear',
+    detail: lines.join('\n\n'),
+    buttons: ['OK'],
+  });
+}
+
 app.whenReady().then(async () => {
+  runRenameMigration();
   // Packaged builds get the icon from the bundle; show it in dev too instead of Electron's
   if (!app.isPackaged && process.platform === 'darwin') {
     app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'));
@@ -385,6 +423,7 @@ app.whenReady().then(async () => {
   backendReady = await pollHealthCheck();
   if (backendReady) {
     createWindow(false);
+    mainWindow?.once('ready-to-show', explainRename);
     setupWatcher();
     if (phoneEnabledSetting()) {
       setPhoneEnabled(true).catch((e) => log(`[Phone] could not start: ${e.message}`));

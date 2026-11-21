@@ -1,4 +1,4 @@
-// Builds the Python backend into dist-backend/smartnotes-backend with PyInstaller,
+// Builds the Python backend into dist-backend/dogear-backend with PyInstaller,
 // after making sure the offline embedding model is present.
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -15,5 +15,5 @@ const run = (args) => execFileSync(python, args, { stdio: 'inherit' });
 if (!existsSync(join('resources', 'models', 'all-MiniLM-L6-v2', 'onnx', 'model.onnx'))) {
   run(['buildtools/fetch_models.py']);
 }
-run(['-m', 'PyInstaller', 'buildtools/smartnotes-backend.spec', '--noconfirm',
+run(['-m', 'PyInstaller', 'buildtools/dogear-backend.spec', '--noconfirm',
   '--distpath', 'dist-backend', '--workpath', join('build', 'pyinstaller')]);

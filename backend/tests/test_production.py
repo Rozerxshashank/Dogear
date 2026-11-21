@@ -242,3 +242,16 @@ async def test_provider_auth_error_is_explained(monkeypatch):
 async def test_missing_key_is_reported():
     with pytest.raises(ValueError):
         [t async for t in chat._stream_provider("mistral", None, "sys", [])]
+
+
+async def test_rebase_note_paths_after_notes_folder_moves(api, tmp_path):
+    from backend.db import rebase_note_paths
+    note = (await api.post("/api/notes/", json={"title": "Moving day", "content": "boxes", "folder": "Home"})).json()
+    old_root = config.SMARTNOTES_DIR
+    new_root = str(tmp_path / "Dogear")
+    assert await rebase_note_paths(old_root, new_root) >= 1
+    moved = (await api.get(f"/api/notes/{note['id']}")).json()
+    assert moved["file_path"] == os.path.join(new_root, "Home", "Moving day.md")
+    # a path that merely starts with the same letters is untouched
+    assert await rebase_note_paths(old_root + "-other", new_root) == 0
+    await rebase_note_paths(new_root, old_root)  # put it back for other tests

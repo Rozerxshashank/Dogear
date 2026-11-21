@@ -1,5 +1,5 @@
-# PyInstaller spec: builds dist-backend/smartnotes-backend (one-folder bundle)
-# Run from the repo root:  pyinstaller buildtools/smartnotes-backend.spec --noconfirm
+# PyInstaller spec: builds dist-backend/dogear-backend (one-folder bundle)
+# Run from the repo root:  pyinstaller buildtools/dogear-backend.spec --noconfirm
 import os
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
@@ -31,8 +31,8 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="smartnotes-backend",
+    name="dogear-backend",
     console=True,
     upx=False,
 )
-coll = COLLECT(exe, a.binaries, a.datas, name="smartnotes-backend", upx=False)
+coll = COLLECT(exe, a.binaries, a.datas, name="dogear-backend", upx=False)

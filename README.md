@@ -1,6 +1,8 @@
-# SmartNotes
+# Dogear
 
-SmartNotes is a fully local AI notes app. It gives you an easy way to write markdown notes while letting you chat with your knowledge base, search semantically, and see how your notes connect in a visual knowledge graph.
+*Formerly SmartNotes.* A dog-ear is the corner you fold down so you can find a page again.
+
+Dogear is a fully local AI notes app. It gives you an easy way to write markdown notes while letting you chat with your knowledge base, search semantically, and see how your notes connect in a visual knowledge graph.
 
 Everything stays on your local machine for privacy. There are no cloud dependencies unless you explicitly choose to use a cloud AI provider.
 
@@ -70,10 +72,14 @@ In the app, open **Settings → Phone**, turn on **Allow phone access** and choo
 
 The server is `src/phoneServer.ts`; the phone app is `phone/index.html`.
 
+## Renamed from SmartNotes
+
+On first launch, Dogear moves `Documents/SmartNotes` to `Documents/Dogear` (only if the new folder doesn't exist yet) and copies the database, search index, paired phones, settings and chat history from the old app data folder, which is left in place as a backup. Saved API keys and the GitHub token must be entered again: macOS ties their encryption key to the app's name. See `src/migrateFromSmartNotes.ts`.
+
 ## Where things are stored
 
 | What | Where |
 |---|---|
-| Your notes (Markdown, with sub-folders) | `~/Documents/SmartNotes` |
-| Database, search index, logs | the app's data folder (macOS: `~/Library/Application Support/SmartNotes`) |
+| Your notes (Markdown, with sub-folders) | `~/Documents/Dogear` |
+| Database, search index, logs | the app's data folder (macOS: `~/Library/Application Support/Dogear`) |
 | API keys and GitHub token | encrypted with the OS keychain (`secrets.json` in the data folder) |

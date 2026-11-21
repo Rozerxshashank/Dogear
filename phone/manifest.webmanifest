@@ -1,7 +1,7 @@
 {
-  "name": "SmartNotes",
-  "short_name": "SmartNotes",
-  "description": "Your SmartNotes, from your Mac, on your phone.",
+  "name": "Dogear",
+  "short_name": "Dogear",
+  "description": "Your notes, from your Mac, on your phone.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f4ef",

@@ -73,7 +73,7 @@ export const Sidebar: React.FC<{
         alignItems: 'center',
         borderBottom: '1px solid var(--color-border)'
       }}>
-        <h2 style={{ fontSize: 'var(--font-size-h3)', margin: 0 }}>SmartNotes</h2>
+        <h2 style={{ fontSize: 'var(--font-size-h3)', margin: 0 }}>Dogear</h2>
         <button 
           onClick={() => { void createNote(); }}
           style={{

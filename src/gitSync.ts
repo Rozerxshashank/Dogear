@@ -10,8 +10,8 @@ import http from 'isomorphic-git/http/node';
 
 const BRANCH = 'main';
 const REMOTE = 'origin';
-const AUTHOR = { name: 'SmartNotes', email: 'smartnotes@users.noreply.local' };
-const DEFAULT_GITIGNORE = '.DS_Store\nThumbs.db\n*.tmp\n.smartnotes-*\n.obsidian/\n.trash/\n';
+const AUTHOR = { name: 'Dogear', email: 'dogear@users.noreply.local' };
+const DEFAULT_GITIGNORE = '.DS_Store\nThumbs.db\n*.tmp\n.dogear-*\n.smartnotes-*\n.obsidian/\n.trash/\n';
 
 export interface SyncResult {
   ok: boolean;
@@ -115,7 +115,7 @@ export async function push(dir: string, repoUrl: string, token: string): Promise
   if (!token) return { ok: false, message: 'Add a GitHub token in Settings first.', log };
   try {
     await ensureRepo(dir, url, log);
-    await commitAll(dir, `SmartNotes backup ${new Date().toISOString()}`, log);
+    await commitAll(dir, `Dogear backup ${new Date().toISOString()}`, log);
     if (!(await refExists(dir, BRANCH))) {
       return { ok: true, message: 'Nothing to push yet: the notes folder is empty.', log };
     }
@@ -138,7 +138,7 @@ export async function pull(dir: string, repoUrl: string, token: string): Promise
   try {
     await ensureRepo(dir, url, log);
     // Commit local edits first so a pull can never overwrite them silently
-    await commitAll(dir, `SmartNotes local changes ${new Date().toISOString()}`, log);
+    await commitAll(dir, `Dogear local changes ${new Date().toISOString()}`, log);
 
     const fetched = await git.fetch({ fs, http, dir, remote: REMOTE, ref: BRANCH, singleBranch: true, ...auth(token) });
     const remoteRef = `refs/remotes/${REMOTE}/${BRANCH}`;
@@ -157,7 +157,7 @@ export async function pull(dir: string, repoUrl: string, token: string): Promise
 
     const merge = await git.merge({
       fs, dir, ours: BRANCH, theirs: remoteRef, author: AUTHOR, abortOnConflict: true,
-      message: `SmartNotes merge ${new Date().toISOString()}`,
+      message: `Dogear merge ${new Date().toISOString()}`,
     });
     if (merge.alreadyMerged) {
       return { ok: true, message: 'Already up to date.', log };

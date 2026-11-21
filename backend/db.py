@@ -1,4 +1,5 @@
 import aiosqlite
+import os
 from typing import Optional
 
 from backend.config import DB_PATH
@@ -127,5 +128,26 @@ async def set_setting(key: str, value: str):
             (key, value),
         )
         await db.commit()
+    finally:
+        await db.close()
+
+
+async def rebase_note_paths(old_root: str, new_root: str) -> int:
+    """
+    The notes folder was moved (e.g. renamed when the app was renamed): point every
+    stored file path at the new location. Returns how many notes were updated.
+    """
+    old_root = os.path.abspath(old_root).rstrip(os.sep) + os.sep
+    new_root = os.path.abspath(new_root).rstrip(os.sep) + os.sep
+    if old_root == new_root:
+        return 0
+    db = await get_db_connection()
+    try:
+        cursor = await db.execute(
+            "UPDATE notes SET file_path = ? || substr(file_path, ?) WHERE substr(file_path, 1, ?) = ?",
+            (new_root, len(old_root) + 1, len(old_root), old_root),
+        )
+        await db.commit()
+        return cursor.rowcount
     finally:
         await db.close()

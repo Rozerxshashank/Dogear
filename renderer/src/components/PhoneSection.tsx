@@ -137,7 +137,7 @@ export const PhoneSection: React.FC = () => {
           <p style={{ ...hint, marginTop: 'var(--spacing-md)' }}>
             Works while this Mac is awake and on the same Wi-Fi. Phones can read, search and edit notes, but not delete them.
             Traffic on the Wi-Fi isn't encrypted, so use this on networks you trust, like home.
-            The first time, macOS may ask whether SmartNotes can accept incoming connections: choose Allow.
+            The first time, macOS may ask whether Dogear can accept incoming connections: choose Allow.
           </p>
         </>
       )}

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ask", tags=["chat"])
 
-SYSTEM_PROMPT = """You are SmartNotes AI, a helpful assistant that answers questions based ONLY on the user's notes.
+SYSTEM_PROMPT = """You are Dogear, a helpful assistant that answers questions based ONLY on the user's notes.
 
 RULES:
 1. ONLY use information from the provided note excerpts below. Do NOT use your general knowledge.

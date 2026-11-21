@@ -11,7 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import init_config, setup_logging, HOST, PORT
-from backend.db import init_db
+from backend.db import init_db, rebase_note_paths
 from backend.routers import notes, sync, search, chat, graph, indexing, importer, system
 from backend.services.pipeline import reindex_missing
 from backend.services.reconcile import reconcile_notes_dir
@@ -32,6 +32,12 @@ async def _startup_maintenance():
 async def lifespan(app: FastAPI):
     init_config()
     await init_db()
+    # The app was renamed and the notes folder moved with it: update stored paths first
+    previous_dir = os.environ.get("SMARTNOTES_PREVIOUS_DIR")
+    if previous_dir:
+        from backend import config
+        moved = await rebase_note_paths(previous_dir, config.SMARTNOTES_DIR)
+        logger.info(f"Notes folder moved from {previous_dir}: updated {moved} note paths")
     maintenance = asyncio.create_task(_startup_maintenance())
     yield
     maintenance.cancel()
