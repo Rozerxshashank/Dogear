@@ -75,10 +75,15 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
-      "hardenedRuntime": true
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "win": {
       "target": [
@@ -94,6 +99,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "artifactName": "${productName}-${os}-${arch}.${ext}",
+    "dmg": {
+      "title": "SmartNotes ${version}"
     }
   },
   "engines": {

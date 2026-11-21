@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartNotes for Mac</title>
+  <meta name="description" content="A notes app for Mac that keeps your writing as plain Markdown files and finds notes by what you meant. Free, open source, works offline." />
+  <meta property="og:title" content="SmartNotes for Mac" />
+  <meta property="og:description" content="Plain Markdown files on your Mac, searchable by meaning. Free and open source." />
+  <meta property="og:image" content="img/editor.jpg" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c1b19'/%3E%3Cpath d='M10 9h9l4 4v10H10z' fill='none' stroke='%23f6f4ef' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f6f4ef;
+      --paper-deep: #efece4;
+      --surface: #fffdf9;
+      --ink: #1c1b19;
+      --ink-soft: #57534c;
+      --ink-faint: #8a857b;
+      --rule: #e2ddd2;
+      --green: #2f7a55;
+      --green-bright: #3f9a6c;
+      --shot-shadow: 0 1px 0 rgba(28,27,25,.04), 0 20px 50px -20px rgba(28,27,25,.25);
+      --serif: "Newsreader", Georgia, "Times New Roman", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --paper: #161513; --paper-deep: #1d1c19; --surface: #22201d;
+        --ink: #eeebe4; --ink-soft: #b5b0a5; --ink-faint: #858076; --rule: #33302b;
+        --green: #6cc497; --green-bright: #82d4aa;
+        --shot-shadow: 0 1px 0 rgba(0,0,0,.3), 0 20px 50px -20px rgba(0,0,0,.7);
+      }
+    }
+    :root[data-theme="dark"] {
+      --paper: #161513; --paper-deep: #1d1c19; --surface: #22201d;
+      --ink: #eeebe4; --ink-soft: #b5b0a5; --ink-faint: #858076; --rule: #33302b;
+      --green: #6cc497; --green-bright: #82d4aa;
+      --shot-shadow: 0 1px 0 rgba(0,0,0,.3), 0 20px 50px -20px rgba(0,0,0,.7);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink);
+      font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--green); text-underline-offset: 3px; }
+    img { display: block; max-width: 100%; height: auto; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .measure { max-width: 620px; }
+
+    /* Top bar */
+    .top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; font-size: 15px; }
+    .wordmark { font-family: var(--serif); font-size: 22px; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+    .top nav { display: flex; gap: 26px; }
+    .top nav a { color: var(--ink-soft); text-decoration: none; }
+    .top nav a:hover { color: var(--ink); }
+
+    /* Hero */
+    .hero { padding: 72px 0 0; }
+    h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.02em; margin: 0; }
+    h1 { font-size: clamp(40px, 6.2vw, 68px); line-height: 1.04; max-width: 13ch; }
+    .lede { font-size: 20px; line-height: 1.55; color: var(--ink-soft); margin: 26px 0 36px; }
+
+    .get { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--ink); color: var(--paper); text-decoration: none;
+      font-weight: 600; font-size: 16px; padding: 14px 22px; border-radius: 10px;
+      transition: background .15s;
+    }
+    .btn:hover { background: #000; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn:hover { background: #fff; } }
+    .btn:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+    .get-meta { font-size: 14px; color: var(--ink-faint); line-height: 1.5; }
+    .get-meta strong { color: var(--ink-soft); font-weight: 500; }
+    .first-run { margin-top: 18px; font-size: 14px; color: var(--ink-faint); }
+
+    .hero-shot { margin-top: 64px; }
+    .frame {
+      border-radius: 12px; overflow: hidden; background: var(--surface);
+      border: 1px solid var(--rule); box-shadow: var(--shot-shadow);
+    }
+    .caption { font-size: 14px; color: var(--ink-faint); margin-top: 14px; }
+
+    /* Story sections */
+    .story { padding: 120px 0 0; }
+    .story h2 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; margin-bottom: 18px; }
+    .story p { color: var(--ink-soft); margin: 0 0 16px; }
+    .split { display: grid; grid-template-columns: 5fr 6fr; gap: 64px; align-items: center; }
+    .split.flip { grid-template-columns: 6fr 5fr; }
+    .split.flip > :first-child { order: 2; }
+
+    .tree {
+      font: 14px/1.9 var(--mono); color: var(--ink-soft); background: var(--surface);
+      border: 1px solid var(--rule); border-radius: 12px; padding: 22px 26px; margin: 0; overflow-x: auto;
+    }
+    .tree .dir { color: var(--ink); }
+    .tree .dim { color: var(--ink-faint); }
+
+    .facts { list-style: none; padding: 0; margin: 24px 0 0; border-top: 1px solid var(--rule); }
+    .facts li { padding: 14px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 150px 1fr; gap: 16px; font-size: 15px; }
+    .facts b { font-weight: 600; color: var(--ink); }
+    .facts span { color: var(--ink-soft); }
+
+    /* FAQ */
+    .faq { padding: 120px 0 0; }
+    .faq h2 { font-size: clamp(30px, 4vw, 42px); margin-bottom: 8px; }
+    .faq .intro { color: var(--ink-soft); margin: 0 0 32px; }
+    details { border-top: 1px solid var(--rule); }
+    details:last-of-type { border-bottom: 1px solid var(--rule); }
+    summary {
+      list-style: none; cursor: pointer; padding: 20px 36px 20px 0; position: relative;
+      font-size: 18px; font-weight: 500;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+"; position: absolute; right: 4px; top: 16px; font-size: 24px; font-weight: 300; color: var(--ink-faint);
+      transition: transform .2s;
+    }
+    details[open] summary::after { transform: rotate(45deg); }
+    summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    details > div { padding: 0 0 22px; color: var(--ink-soft); max-width: 680px; }
+    details > div p { margin: 0 0 12px; }
+    code { font: 14px var(--mono); background: var(--paper-deep); padding: 2px 6px; border-radius: 5px; color: var(--ink); }
+
+    /* Closing */
+    .closing { padding: 120px 0 100px; }
+    .closing-box { border-top: 1px solid var(--ink); padding-top: 40px; display: flex; justify-content: space-between; align-items: end; gap: 32px; flex-wrap: wrap; }
+    .closing h2 { font-size: clamp(30px, 4vw, 42px); max-width: 16ch; line-height: 1.12; }
+    .closing p { color: var(--ink-soft); margin: 14px 0 0; max-width: 460px; }
+
+    footer { border-top: 1px solid var(--rule); padding: 26px 0 40px; font-size: 14px; color: var(--ink-faint); }
+    footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    footer a { color: var(--ink-faint); }
+
+    @media (max-width: 860px) {
+      .split, .split.flip { grid-template-columns: 1fr; gap: 36px; }
+      .split.flip > :first-child { order: 0; }
+      .story, .faq, .closing { padding-top: 88px; }
+    }
+    @media (max-width: 560px) {
+      body { font-size: 16px; }
+      .wrap { padding: 0 16px; }
+      .top nav a:not(.keep) { display: none; }
+      .hero { padding-top: 36px; }
+      .lede { font-size: 18px; }
+      .btn { width: 100%; justify-content: center; }
+      .hero-shot { margin-top: 44px; margin-right: -16px; }
+      .hero-shot .frame { border-radius: 10px 0 0 10px; border-right: 0; }
+      .facts li { grid-template-columns: 1fr; gap: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="wordmark" href="#">SmartNotes</a>
+      <nav aria-label="Main">
+        <a href="#search">Search</a>
+        <a href="#files">Your files</a>
+        <a href="#questions">Questions</a>
+        <a class="keep" href="https://github.com/Rozerxshashank/Smartnotes-poc">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="measure">
+          <h1>Notes that find themselves.</h1>
+          <p class="lede">
+            SmartNotes keeps everything you write as ordinary Markdown files on your Mac, then lets you search them
+            by what you meant instead of the exact words you used. No account, no subscription, and it works offline.
+          </p>
+          <div class="get">
+            <a class="btn" data-download
+               href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/SmartNotes-mac-arm64.dmg">
+              <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.7-1.2 1.9-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg>
+              Download for Mac
+            </a>
+            <div class="get-meta">
+              <strong data-version>Version 1.0</strong> · <span data-size>Free</span><br />
+              Apple Silicon (M1 or newer), macOS 12+
+            </div>
+          </div>
+          <p class="first-run">Opening it the first time? Right-click the app and choose Open. <a href="#gatekeeper">Here's why.</a></p>
+        </div>
+
+        <figure class="hero-shot" style="margin-left:0;margin-right:0">
+          <div class="frame">
+            <img src="img/editor.jpg" width="1904" height="1200"
+                 alt="SmartNotes showing a sidebar of folders (Home, Journal, Reading, Work) and an open note called Q3 planning with headings, a bulleted list and links to other notes." />
+          </div>
+          <figcaption class="caption">Folders on the left are real folders on disk. The green links are ordinary [[wikilinks]].</figcaption>
+        </figure>
+      </section>
+
+      <section class="story" id="search">
+        <div class="split">
+          <div>
+            <h2>You remember the idea, not the wording.</h2>
+            <p>
+              Six months from now you won't recall whether you wrote "focus", "distraction" or "deep work". You'll
+              remember roughly what it was about. So that's how SmartNotes searches.
+            </p>
+            <p>
+              It reads every note for meaning, then combines that with ordinary keyword search. All of it runs on
+              your Mac, with no internet connection and nothing extra to install.
+            </p>
+          </div>
+          <div class="frame">
+            <img src="img/search.jpg" width="1120" height="500" loading="lazy"
+                 alt="Search for 'tips for staying focused at work' returning the notes Deep Work, Four Thousand Weeks and 1-on-1 Marcus." />
+          </div>
+        </div>
+      </section>
+
+      <section class="story" id="files">
+        <div class="split flip">
+          <div>
+            <h2>Your notes are files. That's the point.</h2>
+            <p>
+              Every note is a <code>.md</code> file in <code>Documents/SmartNotes</code>, in the folders you'd expect.
+              Open them in any editor, sync them however you like, or stop using SmartNotes tomorrow and keep everything.
+            </p>
+            <ul class="facts">
+              <li><b>Edit anywhere</b><span>Change a file in another app and SmartNotes picks it up within a second.</span></li>
+              <li><b>Coming from Obsidian</b><span>Import your vault. Folders and [[links]] come across as they are.</span></li>
+              <li><b>Backups</b><span>Push to a private GitHub repository from inside the app.</span></li>
+            </ul>
+          </div>
+          <pre class="tree" aria-label="Example folder structure"><span class="dir">Documents/SmartNotes/</span>
+├── Inbox.md
+├── <span class="dir">Home/</span>
+│   ├── Apartment move.md
+│   └── Sourdough.md
+├── <span class="dir">Journal/</span>
+│   ├── 2026-07-18.md
+│   └── 2026-07-21.md
+├── <span class="dir">Reading/</span>
+│   └── Deep Work.md
+└── <span class="dir">Work/</span>
+    ├── Q3 planning.md
+    └── Pricing notes.md
+<span class="dim">
+# Q3 planning
+
+Goal for the quarter: get onboarding
+time **under one day**.
+
+Open questions: see [[Pricing notes]].</span></pre>
+        </div>
+      </section>
+
+      <section class="story" id="ai">
+        <div class="measure">
+          <h2>Ask your notes a question.</h2>
+          <p>
+            The chat panel answers from your notes only, and names the notes it used so you can check. If the answer
+            isn't in what you wrote, it says so rather than making something up.
+          </p>
+          <p>
+            Run it entirely on your Mac with <a href="https://ollama.com">Ollama</a>, or paste an OpenAI, Mistral or
+            Gemini key in Settings. If you do neither, everything else in the app still works.
+          </p>
+        </div>
+      </section>
+
+      <section class="faq" id="questions">
+        <h2>Before you switch</h2>
+        <p class="intro">The things people usually want to know first.</p>
+
+        <details>
+          <summary>Does it send my notes anywhere?</summary>
+          <div>
+            <p>No. Notes, the search index and settings stay on your Mac. The only time text leaves your computer is if
+            you add a cloud AI key and use chat, in which case the passages relevant to your question go to that provider.
+            GitHub backup only runs when you press Push.</p>
+          </div>
+        </details>
+        <details>
+          <summary>What happens if I stop using SmartNotes?</summary>
+          <div>
+            <p>Nothing happens to your notes. They're Markdown files in a normal folder. Delete the app and they're
+            still there, readable by any text editor, Obsidian, iA Writer or whatever you move to next.</p>
+          </div>
+        </details>
+        <details id="gatekeeper">
+          <summary>Why does macOS warn me the first time I open it?</summary>
+          <div>
+            <p>This early version isn't notarized by Apple yet, which costs a paid developer account we haven't set up.
+            macOS shows a warning for any app in that state.</p>
+            <p>To open it: drag SmartNotes into Applications, then right-click it and choose <b>Open</b>. If macOS still
+            refuses, go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>. You only need to do this once.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Do I need Ollama?</summary>
+          <div>
+            <p>No. Search, linking and the editor work out of the box. Ollama is only needed if you want chat to run on
+            your Mac instead of through a cloud provider. If you install it, pull two models:</p>
+            <p><code>ollama pull llama3.2</code> and <code>ollama pull nomic-embed-text</code></p>
+          </div>
+        </details>
+        <details>
+          <summary>Is there a version for Intel Macs or Windows?</summary>
+          <div>
+            <p>Not yet. This release is built for Apple Silicon Macs (M1 and newer). Windows and Intel builds are planned;
+            <a href="https://github.com/Rozerxshashank/Smartnotes-poc/issues">open an issue</a> if you'd use one, so we know to prioritise it.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Is it really free?</summary>
+          <div>
+            <p>Yes. It's open source, there's no account and nothing to upgrade to. If you use a cloud AI provider, that
+            provider bills you directly for what you use.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="closing">
+        <div class="closing-box">
+          <div>
+            <h2>Try it with the notes you already have.</h2>
+            <p>Point it at an existing folder of Markdown or an Obsidian vault and see what it finds. It takes about a minute.</p>
+          </div>
+          <a class="btn" data-download
+             href="https://github.com/Rozerxshashank/Smartnotes-poc/releases/latest/download/SmartNotes-mac-arm64.dmg">Download for Mac</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <span>SmartNotes is an early, open-source project. Found a bug? <a href="https://github.com/Rozerxshashank/Smartnotes-poc/issues">Tell us</a>.</span>
+      <span><a href="https://github.com/Rozerxshashank/Smartnotes-poc">Source</a> · <a href="https://github.com/Rozerxshashank/Smartnotes-poc/releases">Release notes</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // Visitors on a phone can't install a Mac app: tell them what to do instead.
+    if (/iPhone|iPad|Android/i.test(navigator.userAgent)) {
+      document.querySelector('.first-run').textContent =
+        'SmartNotes runs on Mac. Open this page on your Mac to download it, or bookmark it for later.';
+    }
+
+    // Fill in the real version and size from the latest GitHub release.
+    // The download links work without this.
+    (async () => {
+      try {
+        const res = await fetch('https://api.github.com/repos/Rozerxshashank/Smartnotes-poc/releases/latest');
+        if (!res.ok) return;
+        const release = await res.json();
+        const dmg = (release.assets || []).find((a) => a.name.endsWith('.dmg'));
+        if (!dmg) return;
+        const version = release.tag_name.replace(/^v/, '');
+        document.querySelector('[data-version]').textContent = `Version ${version}`;
+        document.querySelector('[data-size]').textContent = `${Math.round(dmg.size / 1048576)} MB`;
+        document.querySelectorAll('[data-download]').forEach((a) => { a.href = dmg.browser_download_url; });
+      } catch (e) {
+        /* offline or rate-limited: keep the static links */
+      }
+    })();
+  </script>
+</body>
+</html>
