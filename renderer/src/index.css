@@ -1,6 +1,7 @@
 :root {
   /* Colors - Light Mode (Apple-like) */
-  --color-accent: #007aff;
+  --color-accent: #10b981; /* Emerald Green */
+  --color-accent-gradient: #34d399;
   --color-bg-main: #ffffff;
   --color-bg-panel: rgba(255, 255, 255, 0.6);
   --color-text-primary: #1d1d1f;
@@ -45,7 +46,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-accent: #0a84ff;
+    --color-accent: #059669; /* Emerald Green Dark */
+    --color-accent-gradient: #10b981;
     --color-bg-main: #141416;
     --color-bg-panel: rgba(28, 28, 30, 0.75);
     --color-text-primary: #f5f5f7;
@@ -121,9 +123,9 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
 }
 
 @keyframes pulseBorder {
-  0% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
-  70% { box-shadow: 0 0 0 4px rgba(0, 122, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 /* Chat UI Improvements */
@@ -148,6 +150,16 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
   margin: 0;
 }
 
+.chat-bubble a, .chat-bubble a:visited {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-bubble a:hover {
+  opacity: 0.8;
+}
+
 .chat-bubble:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-panel);
@@ -155,7 +167,7 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
 
 .chat-bubble.user {
   align-self: flex-end;
-  background: linear-gradient(135deg, var(--color-accent), #3395ff);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-gradient));
   color: #ffffff;
   border-bottom-right-radius: 4px;
 }
@@ -187,7 +199,7 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
 .chat-input-wrapper:focus-within {
   border-color: var(--color-accent);
   background: var(--color-bg-main);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
 .chat-input {
@@ -209,7 +221,7 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
   align-items: center;
   padding: 2px 10px;
   margin: 0 4px;
-  background: linear-gradient(135deg, var(--color-accent), #3395ff);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-gradient));
   color: #fff !important;
   border-radius: 14px;
   font-size: 11px;
@@ -222,6 +234,6 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
 
 .citation-badge:hover {
   transform: scale(1.05) translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
   opacity: 1 !important;
 }

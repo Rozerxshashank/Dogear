@@ -1,9 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
-import { Settings, Save, X } from 'lucide-react';
+import { Settings, Check, X, FolderInput, Loader2 } from 'lucide-react';
+import { useNotesStore } from '../store/notesStore';
+import { apiUrl } from '../api';
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const settings = useSettingsStore();
+  const ipcToken = useNotesStore((s) => s.ipcToken);
+  const [notesDir, setNotesDir] = useState('');
+  const [importState, setImportState] = useState<{ busy: boolean; message: string }>({ busy: false, message: '' });
+
+  useEffect(() => {
+    window.smartnotes?.getNotesDir?.().then(setNotesDir).catch(() => undefined);
+  }, []);
+
+  const close = () => {
+    if (ipcToken) void settings.pushBackendSettings(ipcToken);
+    onClose();
+  };
+
+  const importFolder = async () => {
+    const folder = await window.smartnotes?.chooseFolder?.();
+    if (!folder || !ipcToken) return;
+    setImportState({ busy: true, message: 'Importing…' });
+    try {
+      const res = await fetch(apiUrl('/import/folder'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-IPC-Token': ipcToken },
+        body: JSON.stringify({ folder_path: folder }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+      const skipped = data.skipped?.length ? ` (${data.skipped.length} skipped)` : '';
+      setImportState({ busy: false, message: `Imported ${data.count} notes${skipped}. Indexing continues in the background.` });
+      await useNotesStore.getState().fetchNotes();
+    } catch (e) {
+      setImportState({ busy: false, message: `Import failed: ${(e as Error).message}` });
+    }
+  };
 
   return (
     <div style={{
@@ -35,7 +69,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             <Settings size={20} style={{ color: 'var(--color-accent)' }} />
             <h2 style={{ margin: 0, fontSize: 'var(--font-size-h3)' }}>Settings</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+          <button onClick={close} aria-label="Close settings" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
             <X size={20} />
           </button>
         </div>
@@ -62,7 +96,6 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
               <option value="gemini">Google Gemini (Cloud - Requires API Key)</option>
               <option value="mistral">Mistral AI (Cloud - Requires API Key)</option>
               <option value="openai">OpenAI (Cloud - Requires API Key)</option>
-              <option value="sbert">SBERT Fallback (Local CPU - Embeddings only)</option>
             </select>
             
             {settings.aiProvider === 'openai' && (
@@ -96,6 +129,37 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             )}
           </section>
 
+          {/* GitHub */}
+          <section>
+            <h3 style={{ fontSize: 'var(--font-size-body)', marginBottom: 'var(--spacing-md)' }}>GitHub Backup</h3>
+            <input
+              type="text"
+              placeholder="Repository (owner/repo or https URL)"
+              value={settings.githubRepo}
+              onChange={(e) => settings.setGithubRepo(e.target.value)}
+              style={{ ...inputStyle, marginBottom: 'var(--spacing-sm)' }}
+            />
+            <input
+              type="password"
+              placeholder="Personal access token (Contents: read and write)"
+              value={settings.githubPat}
+              onChange={(e) => settings.setGithubPat(e.target.value)}
+              style={inputStyle}
+            />
+            <p style={hintStyle}>Use a private repository. The token is stored encrypted by your operating system.</p>
+          </section>
+
+          {/* Notes folder and import */}
+          <section>
+            <h3 style={{ fontSize: 'var(--font-size-body)', marginBottom: 'var(--spacing-md)' }}>Notes Folder</h3>
+            <p style={{ ...hintStyle, marginTop: 0, wordBreak: 'break-all' }}>{notesDir || '—'}</p>
+            <button onClick={importFolder} disabled={importState.busy} style={secondaryButton}>
+              {importState.busy ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <FolderInput size={16} />}
+              Import Markdown / Obsidian folder…
+            </button>
+            {importState.message && <p style={hintStyle}>{importState.message}</p>}
+          </section>
+
           {/* Auto-Linking */}
           <section>
             <h3 style={{ fontSize: 'var(--font-size-body)', marginBottom: 'var(--spacing-md)' }}>Auto-Linking Threshold</h3>
@@ -126,10 +190,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           background: 'var(--color-bg-panel)'
         }}>
           <button
-            onClick={() => {
-              // TODO: Save to electron-store
-              onClose();
-            }}
+            onClick={close}
             style={{
               padding: '8px 24px',
               borderRadius: 'var(--radius-button)',
@@ -143,7 +204,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
               fontSize: 'var(--font-size-small)'
             }}
           >
-            <Save size={16} /> Save Changes
+            <Check size={16} /> Done
           </button>
         </div>
       </div>
@@ -159,4 +220,23 @@ const inputStyle = {
   background: 'var(--color-bg-panel)',
   color: 'var(--color-text-primary)',
   boxSizing: 'border-box' as const,
+};
+
+const hintStyle = {
+  fontSize: 'var(--font-size-small)',
+  color: 'var(--color-text-secondary)',
+  marginTop: 'var(--spacing-sm)',
+};
+
+const secondaryButton = {
+  padding: '8px 14px',
+  borderRadius: 'var(--radius-button)',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-bg-panel)',
+  color: 'var(--color-text-primary)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  fontSize: 'var(--font-size-small)',
 };

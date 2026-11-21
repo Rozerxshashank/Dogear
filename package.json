@@ -4,37 +4,99 @@
   "description": "SmartNotes - A fully local semantic search and RAG-based markdown notes app.",
   "main": "dist/src/main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "tsc && electron .",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit"
+    "dev:electron": "tsc -p tsconfig.electron.json && electron .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:backend": "node scripts/build-backend.mjs",
+    "build": "npm run build:electron && npm run build:renderer",
+    "dist": "npm run build && npm run build:backend && electron-builder --publish never"
   },
   "dependencies": {
+    "chokidar": "^5.0.0",
+    "isomorphic-git": "^1.41.3"
+  },
+  "devDependencies": {
     "@tiptap/extension-link": "^3.30.0",
+    "@tiptap/markdown": "^3.30.0",
     "@tiptap/react": "^3.30.0",
     "@tiptap/starter-kit": "^3.30.0",
     "@tiptap/suggestion": "^3.30.0",
-    "chokidar": "^5.0.0",
+    "@types/node": "^22.2.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^8.2.2",
     "date-fns": "^4.4.0",
-    "electron-store": "^11.0.2",
-    "isomorphic-git": "^1.41.3",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.18.0",
+    "jsdom": "^26.1.0",
     "lucide-react": "^0.428.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-force-graph-2d": "^1.29.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vitest": "^3.2.7",
     "zustand": "^5.0.14"
   },
-  "devDependencies": {
-    "@types/node": "^22.2.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "concurrently": "^8.2.2",
-    "electron": "^43.3.0",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.0"
+  "author": "SmartNotes",
+  "build": {
+    "appId": "app.smartnotes.desktop",
+    "productName": "SmartNotes",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/src/**/*",
+      "dist/renderer/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-backend/smartnotes-backend",
+        "to": "backend"
+      },
+      {
+        "from": "resources/models",
+        "to": "models"
+      },
+      {
+        "from": "renderer/error.html",
+        "to": "error.html"
+      }
+    ],
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

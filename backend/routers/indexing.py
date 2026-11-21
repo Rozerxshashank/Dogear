@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from backend.db import get_db_connection
 from backend.services.pipeline import get_indexing_status
 

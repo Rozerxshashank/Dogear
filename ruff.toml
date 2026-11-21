@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py311"
+extend-exclude = ["venv", "dist-backend", "build", "node_modules"]
+
+[lint]
+select = ["E", "F", "W", "B", "ASYNC"]
+# ASYNC230/240: small local note files are read/written directly; acceptable for a desktop app
+ignore = ["E501", "B008", "ASYNC230", "ASYNC240"]

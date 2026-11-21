@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNotesStore } from '../store/notesStore';
 import { Search, X } from 'lucide-react';
+import { apiUrl } from '../api';
 
-const BACKEND_URL = 'http://127.0.0.1:8765/api/search';
 
 interface SearchResult {
   note_id: string;
@@ -25,7 +25,7 @@ export const SearchPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
     setIsSearching(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/?q=${encodeURIComponent(q)}`, {
+      const res = await fetch(`${apiUrl('/search')}/?q=${encodeURIComponent(q)}`, {
         headers: { 'X-IPC-Token': ipcToken }
       });
       if (res.ok) {

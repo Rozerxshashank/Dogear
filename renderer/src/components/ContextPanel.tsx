@@ -3,8 +3,8 @@ import { useNotesStore } from '../store/notesStore';
 import { ChatPanel } from './ChatPanel';
 import { KnowledgeGraph } from './KnowledgeGraph';
 import { MessageSquare, Share2, Link } from 'lucide-react';
+import { apiUrl } from '../api';
 
-const BACKEND_URL = 'http://127.0.0.1:8765/api/notes';
 
 // For now, let's just make the ContextPanel switch between views.
 export const ContextPanel: React.FC<{ width?: number }> = ({ width = 280 }) => {
@@ -81,7 +81,7 @@ const RelatedNotes: React.FC = () => {
     let isMounted = true;
     setLoading(true);
     
-    fetch(`${BACKEND_URL}/${activeNoteId}/links`, {
+    fetch(`${apiUrl('/notes')}/${activeNoteId}/links`, {
       headers: { 'X-IPC-Token': ipcToken }
     })
       .then(res => res.json())

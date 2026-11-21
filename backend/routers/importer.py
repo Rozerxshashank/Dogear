@@ -1,19 +1,27 @@
 """
 Importer router — import Obsidian / plain markdown folders.
-Spec: Parse [[wikilinks]], preserve folder structure, queue background embedding.
+Copies files into the notes folder keeping their sub-folder structure, turns
+[[wikilinks]] into manual links, and queues background embedding.
 """
-from fastapi import APIRouter, Depends, BackgroundTasks
-from pydantic import BaseModel
 import os
 import re
 import uuid
 import time
-import hashlib
+import logging
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+
 from backend.db import get_db_connection
-from backend.config import SMARTNOTES_DIR
+from backend.services.files import (
+    compute_hash, free_note_path, notes_root, read_text, sanitize_folder, write_atomic,
+)
 from backend.services.pipeline import embed_note
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/import", tags=["import"])
+
+MAX_IMPORT_FILE_BYTES = 5_000_000
 
 
 class ImportRequest(BaseModel):
@@ -29,80 +37,91 @@ async def db_dep():
 
 
 def extract_wikilinks(content: str) -> list[str]:
-    """Extract [[wikilink]] targets from content."""
-    return re.findall(r'\[\[([^\]]+)\]\]', content)
+    """Extract [[Target]], [[Target|alias]] and [[Target#heading]] targets."""
+    targets = []
+    for raw in re.findall(r"\[\[([^\]]+)\]\]", content):
+        target = raw.split("|", 1)[0].split("#", 1)[0].strip()
+        if target:
+            targets.append(target)
+    return targets
 
 
 @router.post("/folder")
 async def import_folder(req: ImportRequest, background_tasks: BackgroundTasks, db=Depends(db_dep)):
-    """
-    Import all .md files from a folder.
-    Returns count immediately, queues embedding in background.
-    """
-    folder_path = req.folder_path
-    if not os.path.isdir(folder_path):
-        return {"error": "Folder not found", "count": 0}
-    
-    imported = []
-    
-    for root, dirs, files in os.walk(folder_path):
-        # Compute relative folder path
-        rel_folder = os.path.relpath(root, folder_path)
-        if rel_folder == ".":
-            rel_folder = ""
-        
-        for filename in files:
-            if not filename.endswith(".md"):
+    source = os.path.abspath(os.path.expanduser(req.folder_path))
+    if not os.path.isdir(source):
+        raise HTTPException(status_code=400, detail="Folder not found")
+    root = notes_root()
+    try:
+        overlaps = os.path.commonpath([source, root]) in (source, root)
+    except ValueError:  # different drives on Windows
+        overlaps = False
+    if overlaps:
+        raise HTTPException(status_code=400, detail="Choose a folder outside your SmartNotes folder")
+
+    imported, skipped = [], []
+
+    for dirpath, dirnames, filenames in os.walk(source):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]  # skip .obsidian, .git, .trash
+        rel = os.path.relpath(dirpath, source)
+        folder = "" if rel == "." else sanitize_folder(rel.replace(os.sep, "/"))
+
+        for filename in sorted(filenames):
+            if not filename.endswith(".md") or filename.startswith("."):
                 continue
-            
-            filepath = os.path.join(root, filename)
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-            
+            src = os.path.join(dirpath, filename)
+            try:
+                if os.path.getsize(src) > MAX_IMPORT_FILE_BYTES:
+                    skipped.append({"file": src, "reason": "too large"})
+                    continue
+                content = read_text(src)
+            except OSError as e:
+                skipped.append({"file": src, "reason": str(e)})
+                continue
+
             title = os.path.splitext(filename)[0]
             note_id = str(uuid.uuid4())
             now = int(time.time())
-            content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-            
-            # Copy file into SmartNotes dir
-            dest_filename = filename
-            dest_path = os.path.join(SMARTNOTES_DIR, dest_filename)
-            counter = 1
-            while os.path.exists(dest_path):
-                dest_filename = f"{title} ({counter}).md"
-                dest_path = os.path.join(SMARTNOTES_DIR, dest_filename)
-                counter += 1
-            
-            with open(dest_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            
+            dest = await free_note_path(db, folder, title, note_id)
+
+            # DB row first (committed) so the watcher sees the new file as ours
             await db.execute(
-                "INSERT INTO notes (id, title, content, folder, created_at, updated_at, file_path, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (note_id, title, content, rel_folder, now, now, dest_path, content_hash)
+                "INSERT INTO notes (id, title, content, folder, created_at, updated_at, file_path, content_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (note_id, title, content, folder, now, now, dest, compute_hash(content)),
             )
-            
-            imported.append({"id": note_id, "title": title, "folder": rel_folder})
-            
-            # Queue background embedding
-            background_tasks.add_task(embed_note, note_id, title, rel_folder, content)
-    
-    await db.commit()
-    
-    # Parse wikilinks and create manual links
+            await db.commit()
+            try:
+                write_atomic(dest, content)
+            except OSError as e:
+                await db.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+                await db.commit()
+                skipped.append({"file": src, "reason": str(e)})
+                continue
+
+            imported.append({"id": note_id, "title": title, "folder": folder, "content": content})
+            background_tasks.add_task(embed_note, note_id, title, folder, content)
+
+    # Wikilinks -> manual links (titles are matched case-insensitively, like Obsidian)
+    async with db.execute("SELECT id, title FROM notes") as cursor:
+        by_title = {}
+        for row in await cursor.fetchall():
+            by_title.setdefault(row["title"].lower(), row["id"])
+    now = int(time.time())
     for item in imported:
-        async with db.execute("SELECT content FROM notes WHERE id = ?", (item["id"],)) as cursor:
-            row = await cursor.fetchone()
-            if row and row[0]:
-                wikilinks = extract_wikilinks(row[0])
-                for link_title in wikilinks:
-                    # Find the target note by title
-                    async with db.execute("SELECT id FROM notes WHERE title = ?", (link_title,)) as c2:
-                        target = await c2.fetchone()
-                        if target:
-                            await db.execute(
-                                "INSERT OR IGNORE INTO links (source_id, target_id, link_type, similarity_score) VALUES (?, ?, 'manual', 1.0)",
-                                (item["id"], target[0])
-                            )
+        for target in extract_wikilinks(item["content"]):
+            target_id = by_title.get(os.path.basename(target).lower())
+            if target_id and target_id != item["id"]:
+                await db.execute(
+                    "INSERT OR IGNORE INTO links (source_id, target_id, link_type, similarity_score, created_at) "
+                    "VALUES (?, ?, 'manual', 1.0, ?)",
+                    (item["id"], target_id, now),
+                )
     await db.commit()
-    
-    return {"count": len(imported), "notes": imported}
+
+    logger.info(f"Imported {len(imported)} notes from {source} ({len(skipped)} skipped)")
+    return {
+        "count": len(imported),
+        "notes": [{k: v for k, v in i.items() if k != "content"} for i in imported],
+        "skipped": skipped,
+    }

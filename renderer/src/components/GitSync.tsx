@@ -8,35 +8,32 @@ export const GitSync: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [log, setLog] = useState<string[]>([]);
 
-  const appendLog = (msg: string) => setLog(prev => [...prev, msg]);
+  const appendLog = (msg: string) => setLog((prev) => [...prev, msg]);
 
-  const handlePush = async () => {
+  const run = async (action: 'push' | 'pull') => {
+    if (!window.smartnotes?.gitSync) {
+      appendLog('GitHub sync is only available in the desktop app.');
+      return;
+    }
     if (!settings.githubPat || !settings.githubRepo) {
-      alert("Please configure GitHub PAT and Repo URL in Settings.");
+      appendLog('Add your GitHub repository and token in Settings (⌘,) first.');
       return;
     }
     setIsSyncing(true);
-    appendLog("Starting GitHub Push...");
-    // TODO: Implement isomorphic-git push logic
-    setTimeout(() => {
-      appendLog("Push completed successfully.");
+    appendLog(action === 'push' ? 'Pushing to GitHub…' : 'Pulling from GitHub…');
+    try {
+      const result = await window.smartnotes.gitSync(action, settings.githubRepo);
+      result.log.forEach(appendLog);
+      appendLog(result.ok ? `✓ ${result.message}` : `✗ ${result.message}`);
+      if (result.ok && action === 'pull') await useNotesStore.getState().fetchNotes();
+    } catch (e) {
+      appendLog(`✗ ${(e as Error).message}`);
+    } finally {
       setIsSyncing(false);
-    }, 2000);
-  };
-
-  const handlePull = async () => {
-    if (!settings.githubPat || !settings.githubRepo) {
-      alert("Please configure GitHub PAT and Repo URL in Settings.");
-      return;
     }
-    setIsSyncing(true);
-    appendLog("Starting GitHub Pull...");
-    // TODO: Implement isomorphic-git pull logic
-    setTimeout(() => {
-      appendLog("Pull completed successfully.");
-      setIsSyncing(false);
-    }, 2000);
   };
+  const handlePush = () => run('push');
+  const handlePull = () => run('pull');
 
   return (
     <div style={{
@@ -92,7 +89,7 @@ export const GitSync: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 fontSize: 'var(--font-size-body)',
               }}
             >
-              <Download size={18} /> Pull Changes
+              <Download size={18} /> Pull
             </button>
             <button
               onClick={handlePush}
@@ -112,13 +109,14 @@ export const GitSync: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 fontSize: 'var(--font-size-body)',
               }}
             >
-              <Upload size={18} /> Push Changes
+              <Upload size={18} /> Push
             </button>
           </div>
 
           <div style={{
-            background: '#000',
-            color: '#0f0',
+            background: 'var(--color-bg-panel)',
+            color: 'var(--color-text-primary)',
+            border: '1px solid var(--color-border)',
             fontFamily: 'monospace',
             padding: 'var(--spacing-sm)',
             borderRadius: '4px',
@@ -126,7 +124,7 @@ export const GitSync: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             overflowY: 'auto',
             fontSize: '12px',
           }}>
-            {log.length === 0 ? <span style={{ opacity: 0.5 }}>Waiting for sync operation...</span> : null}
+            {log.length === 0 ? <span style={{ opacity: 0.5 }}>Push backs up this device's notes to GitHub. Pull brings in changes made elsewhere.</span> : null}
             {log.map((l, i) => <div key={i}>{l}</div>)}
             {isSyncing && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>

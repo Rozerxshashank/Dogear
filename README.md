@@ -13,45 +13,54 @@ Everything stays on your local machine for privacy. There are no cloud dependenc
 * **Knowledge Graph:** Visualize the connections between all your notes.
 * **GitHub Sync:** Easily backup or sync your notes to a private GitHub repository.
 
-## Setup Instructions
+## Development
 
-This app uses an Electron frontend with React and a FastAPI Python backend. You will need Node.js and Python installed to run it.
+You need Node.js 22+ and Python 3.11+ (CI uses 3.14).
 
-### 1. Install Node Dependencies
-Open a terminal in the project folder and run:
 ```bash
 npm install
-```
-
-### 2. Setup the Python Backend
-You need to create a Python virtual environment and install the required packages.
-```bash
-# Create a virtual environment named "venv"
 python3 -m venv venv
-
-# Activate it (Mac/Linux)
-source venv/bin/activate
-# Or on Windows:
-# venv\Scripts\activate
-
-# Install the dependencies
-pip install fastapi uvicorn aiosqlite pydantic chromadb langchain-text-splitters sentence-transformers tiktoken ollama httpx
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+python buildtools/fetch_models.py # offline CPU embedding model (~90 MB, once)
+npm run dev
 ```
 
-### 3. Setup Ollama (Recommended)
-For the AI chat and embeddings to work locally, it is highly recommended to install Ollama.
-1. Download Ollama from their official website.
-2. Open a terminal and download the required models:
+`npm run dev` starts Vite and Electron; Electron starts the Python backend on a free local port.
+
+### Optional: Ollama for local chat and better embeddings
+
 ```bash
 ollama pull llama3.2
 ollama pull nomic-embed-text
 ```
-*(If you do not have Ollama installed, the app will fall back to using your CPU for embeddings, but local chat will not be available unless you provide a cloud API key in the settings).*
 
-### 4. Run the App
-With the setup complete, you can start the application in development mode.
+Without Ollama, search and auto-linking use the built-in CPU model, and chat works with a cloud provider (OpenAI, Mistral or Gemini) whose API key you enter in Settings. The status dot in the sidebar shows what is available.
+
+## Tests and checks
+
 ```bash
-npm run dev
+npm run typecheck && npm test                       # renderer + Electron
+venv/bin/ruff check backend buildtools              # backend lint
+venv/bin/python -m pytest backend/tests -q          # backend tests
 ```
 
-This will launch both the React frontend and the Python backend at the same time. The app will automatically create a `SmartNotes` folder in your Documents directory to store your markdown files.
+CI runs all of these on every push and pull request (`.github/workflows/ci.yml`).
+
+## Building installers
+
+```bash
+npm run dist
+```
+
+This bundles the backend with PyInstaller, then packages the app with electron-builder into `release/` (DMG/ZIP on macOS, NSIS installer on Windows, AppImage on Linux). Build each platform on that platform; pushing a `v*` tag builds all three in CI.
+
+Before distributing publicly, add code-signing secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, and for macOS notarization `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`) and an app icon in `build/`.
+
+## Where things are stored
+
+| What | Where |
+|---|---|
+| Your notes (Markdown, with sub-folders) | `~/Documents/SmartNotes` |
+| Database, search index, logs | the app's data folder (macOS: `~/Library/Application Support/SmartNotes`) |
+| API keys and GitHub token | encrypted with the OS keychain (`secrets.json` in the data folder) |

@@ -33,7 +33,9 @@ export const ChatPanel: React.FC = () => {
 
   const preprocessMarkdown = (text: string) => {
     // Replace [Note: Title] with a markdown link so ReactMarkdown can parse it
-    return text.replace(/\[Note:\s*([^\]]+)\]/g, '[$1](note:$1)');
+    return text.replace(/\[Note:\s*([^\]]+)\]/gi, (match, title) => {
+      return `[${title}](note:${encodeURIComponent(title)})`;
+    });
   };
 
   return (
@@ -251,8 +253,8 @@ export const ChatPanel: React.FC = () => {
         {`
           .chat-send-btn:hover:not(:disabled) {
             transform: scale(1.05) translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-            background: linear-gradient(135deg, var(--color-accent), #3395ff);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, var(--color-accent), var(--color-accent-gradient));
           }
           .chat-send-btn:active:not(:disabled) {
             transform: scale(0.95);

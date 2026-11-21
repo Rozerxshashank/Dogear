@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useSettingsStore } from './settingsStore';
+import { apiUrl } from '../api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -31,7 +32,6 @@ interface ChatState {
   deleteSession: (id: string) => void;
 }
 
-const BACKEND_URL = 'http://127.0.0.1:8765/api/ask';
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -44,7 +44,7 @@ export const useChatStore = create<ChatState>()(
 
   addUserMessage: (content: string) => {
     set((state) => {
-      const newMessages = [...state.messages, { role: 'user', content }];
+      const newMessages: ChatMessage[] = [...state.messages, { role: 'user', content }];
       return { messages: newMessages };
     });
     get().saveCurrentSession();
@@ -57,17 +57,16 @@ export const useChatStore = create<ChatState>()(
     const controller = new AbortController();
 
     set((state) => ({
-      messages: [...state.messages, { role: 'user', content: query }],
+      messages: [...state.messages, { role: 'user', content: query }] as ChatMessage[],
       isStreaming: true,
       activeController: controller
     }));
 
-    // Add empty assistant message for streaming
     set((state) => ({
-      messages: [...state.messages, { role: 'assistant', content: '', isStreaming: true }]
+      messages: [...state.messages, { role: 'assistant', content: '', isStreaming: true }] as ChatMessage[]
     }));
 
-    const url = `${BACKEND_URL}/stream`;
+    const url = `${apiUrl('/ask')}/stream`;
     
     const currentMessages = get().messages;
     const historyToSend = currentMessages.slice(0, currentMessages.length - 1).map(m => ({

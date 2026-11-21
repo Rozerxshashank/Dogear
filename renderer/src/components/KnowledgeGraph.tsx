@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNotesStore } from '../store/notesStore';
+import { apiUrl } from '../api';
 
-const BACKEND_URL = 'http://127.0.0.1:8765/api/graph';
 
 interface GraphNode {
   id: string;
@@ -34,7 +34,7 @@ export const KnowledgeGraph: React.FC = () => {
 
   useEffect(() => {
     if (!ipcToken) return;
-    fetch(`${BACKEND_URL}/`, {
+    fetch(`${apiUrl('/graph')}/`, {
       headers: { 'X-IPC-Token': ipcToken }
     })
       .then((r) => r.json())

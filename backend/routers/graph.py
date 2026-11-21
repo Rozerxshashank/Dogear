@@ -29,7 +29,7 @@ async def get_graph(db=Depends(db_dep)):
                 "label": row[1] or "Untitled",
                 "val": max(1, word_count // 10),  # Scale down for rendering
             })
-    
+
     edges = []
     async with db.execute("SELECT source_id, target_id, link_type, similarity_score FROM links") as cursor:
         rows = await cursor.fetchall()
@@ -40,5 +40,5 @@ async def get_graph(db=Depends(db_dep)):
                 "link_type": row[2],
                 "value": row[3] or 0.5,
             })
-    
+
     return {"nodes": nodes, "edges": edges}

@@ -3,7 +3,6 @@ Chunker service — splits note content into chunks for embedding.
 Spec: 512-token window, 64-token overlap, markdown-aware, title-injected prefix.
 """
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import re
 
 
 def strip_yaml_frontmatter(content: str) -> str:
@@ -18,14 +17,14 @@ def strip_yaml_frontmatter(content: str) -> str:
 def chunk_note(note_id: str, title: str, folder: str, content: str) -> list[dict]:
     """
     Split a note into chunks suitable for embedding.
-    
+
     Returns a list of dicts: [{"chunk_id": str, "text": str, "note_id": str, "index": int}]
     """
     content = strip_yaml_frontmatter(content or "")
-    
+
     if not content.strip():
         return []
-    
+
     # RecursiveCharacterTextSplitter with markdown-aware separators
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=512,
@@ -40,13 +39,13 @@ def chunk_note(note_id: str, title: str, folder: str, content: str) -> list[dict
         ],
         is_separator_regex=False,
     )
-    
+
     chunks = splitter.split_text(content)
-    
+
     # Title injection prefix per §8
     folder_prefix = f" > {folder}" if folder else ""
     title_prefix = f"Title: {title}{folder_prefix}\n\n"
-    
+
     result = []
     for i, chunk_text in enumerate(chunks):
         prefixed_text = title_prefix + chunk_text
@@ -57,5 +56,5 @@ def chunk_note(note_id: str, title: str, folder: str, content: str) -> list[dict
             "index": i,
             "raw_text": chunk_text,  # Without title prefix, for display
         })
-    
+
     return result

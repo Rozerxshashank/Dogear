@@ -1,62 +1,87 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { Markdown } from '@tiptap/markdown';
 import { useNotesStore } from '../store/notesStore';
 import { WikilinkExtension } from './WikilinkExtension';
 import { SlashCommand } from './SlashCommand';
 import { EditorToolbar } from './EditorToolbar';
+import { getNoteContent, setNoteContent } from '../markdown';
+
+const AUTOSAVE_MS = 1000;
 
 export const Editor: React.FC = () => {
   const activeNoteId = useNotesStore((state) => state.activeNoteId);
-  const notes = useNotesStore((state) => state.notes);
-  const updateActiveNote = useNotesStore((state) => state.updateActiveNote);
+  const activeNote = useNotesStore((state) => state.notes.find((n) => n.id === state.activeNoteId));
   const isDirty = useNotesStore((state) => state.isDirty);
-  const setDirtyState = useNotesStore((state) => state.setDirtyState);
-  
-  const activeNote = notes.find((n) => n.id === activeNoteId);
+  const isSaving = useNotesStore((state) => state.isSaving);
+  const saveError = useNotesStore((state) => state.saveError);
+  const reloadToken = useNotesStore((state) => state.reloadToken);
+  const setDraft = useNotesStore((state) => state.setDraft);
+  const saveDraft = useNotesStore((state) => state.saveDraft);
 
-  // Local state for debouncing
   const [localTitle, setLocalTitle] = useState('');
+  const titleRef = useRef('');
+  const loadingRef = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleSave = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => { void saveDraft(); }, AUTOSAVE_MS);
+  };
 
   const editor = useEditor({
-    extensions: [StarterKit, WikilinkExtension, SlashCommand],
-    content: activeNote ? activeNote.content : '',
+    extensions: [StarterKit, Markdown, WikilinkExtension, SlashCommand],
+    content: '',
     onUpdate: ({ editor }) => {
-      // Autosave content changes
-      const content = editor.getHTML();
-      if (activeNote && content !== activeNote.content) {
-        setDirtyState(true);
-      }
+      if (loadingRef.current) return;
+      setDraft(titleRef.current, getNoteContent(editor as any));
+      scheduleSave();
     },
   });
 
-  // Sync editor content when active note changes
+  // Load the note into the editor when switching notes or after "Use file version"
+  const loadedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (editor && activeNote) {
-      if (editor.getHTML() !== activeNote.content) {
-        editor.commands.setContent(activeNote.content);
-      }
-      setLocalTitle(activeNote.title);
-    } else if (editor) {
-      editor.commands.setContent('');
-      setLocalTitle('');
+    if (!editor) return;
+    const note = useNotesStore.getState().notes.find((n) => n.id === activeNoteId);
+    loadingRef.current = true;
+    setNoteContent(editor as any, note?.content ?? '');
+    loadingRef.current = false;
+    setLocalTitle(note?.title ?? '');
+    titleRef.current = note?.title ?? '';
+    loadedFor.current = note ? `${note.id}:${note.updated_at}` : null;
+  }, [activeNoteId, reloadToken, editor]);
+
+  // Apply edits made outside the app (file watcher) when there are no local edits
+  useEffect(() => {
+    if (!editor || !activeNote || isDirty) return;
+    const key = `${activeNote.id}:${activeNote.updated_at}`;
+    if (loadedFor.current === key) return;
+    loadedFor.current = key;
+    if (getNoteContent(editor as any) !== activeNote.content) {
+      loadingRef.current = true;
+      setNoteContent(editor as any, activeNote.content);
+      loadingRef.current = false;
     }
-  }, [activeNoteId, editor]);
+    if (activeNote.title !== titleRef.current) {
+      setLocalTitle(activeNote.title);
+      titleRef.current = activeNote.title;
+    }
+  }, [activeNote?.updated_at, editor, isDirty]);
 
-  // Debounced Autosave (1500ms)
+  // Save pending edits on unmount and before the window closes
   useEffect(() => {
-    if (!activeNoteId || !editor) return;
-
-    const handler = setTimeout(() => {
-      const content = editor.getHTML();
-      // Only call update if something actually changed from what's in the store
-      if (activeNote && (localTitle !== activeNote.title || content !== activeNote.content)) {
-        updateActiveNote(localTitle, content);
-      }
-    }, 1500);
-
-    return () => clearTimeout(handler);
-  }, [localTitle, editor?.getHTML(), activeNoteId, updateActiveNote, activeNote]);
+    const flush = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      void useNotesStore.getState().saveDraft();
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      flush();
+    };
+  }, []);
 
   if (!activeNote) {
     return (
@@ -81,7 +106,11 @@ export const Editor: React.FC = () => {
           value={localTitle}
           onChange={(e) => {
             setLocalTitle(e.target.value);
-            setDirtyState(true);
+            titleRef.current = e.target.value;
+            if (editor) {
+              setDraft(e.target.value, getNoteContent(editor as any));
+              scheduleSave();
+            }
           }}
           style={{
             fontSize: 'var(--font-size-h1)',
@@ -93,6 +122,7 @@ export const Editor: React.FC = () => {
             flex: 1
           }}
           placeholder="Note Title"
+          aria-label="Note title"
         />
         <div style={{
           fontSize: 'var(--font-size-small)',
@@ -100,7 +130,9 @@ export const Editor: React.FC = () => {
           opacity: 0.8,
           marginTop: 'var(--spacing-sm)'
         }}>
-          {isDirty ? 'Editing…' : 'Saved'}
+          {saveError ? (
+            <span style={{ color: '#ef4444' }} title={saveError}>Not saved — retrying on next edit</span>
+          ) : isSaving ? 'Saving…' : isDirty ? 'Editing…' : 'Saved'}
         </div>
       </div>
       <EditorToolbar editor={editor} />

@@ -8,17 +8,8 @@ import { SearchPanel } from './components/SearchPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GitSync } from './components/GitSync';
 import { ConflictModal } from './components/ConflictModal';
-
-declare global {
-  interface Window {
-    smartnotes: {
-      getIpcToken: () => Promise<string>;
-      setDirty: (noteId: string, isDirty: boolean) => void;
-      onFileConflict: (callback: (noteId: string) => void) => void;
-      onSyncRefresh: (callback: () => void) => void;
-    };
-  }
-}
+import { useSettingsStore } from './store/settingsStore';
+import { initApi } from './api';
 
 const App: React.FC = () => {
   const setIpcToken = useNotesStore((state) => state.setIpcToken);
@@ -51,36 +42,35 @@ const App: React.FC = () => {
   const pollIndexingStatus = useBackendStore((state) => state.pollIndexingStatus);
 
   useEffect(() => {
-    async function init() {
-      if (window.smartnotes) {
-        const token = await window.smartnotes.getIpcToken();
-        setIpcToken(token);
-        
-        // Initial checks
-        checkOllamaStatus(token);
-        pollIndexingStatus(token);
-        
-        // Listen for file conflicts
-        window.smartnotes.onFileConflict((noteId) => {
-          setConflictNoteId(noteId);
-        });
+    let cancelled = false;
+    const timers: ReturnType<typeof setInterval>[] = [];
 
-        // Listen for external sync events to refresh UI
-        window.smartnotes.onSyncRefresh(() => {
-          useNotesStore.getState().fetchNotes();
-        });
-        
-        // Setup polling
-        const ollamaInterval = setInterval(() => checkOllamaStatus(token), 30000);
-        const indexingInterval = setInterval(() => pollIndexingStatus(token), 2000);
-        
-        return () => {
-          clearInterval(ollamaInterval);
-          clearInterval(indexingInterval);
-        };
-      }
+    async function init() {
+      if (!window.smartnotes) return;
+      await initApi();
+      const token = await window.smartnotes.getIpcToken();
+      await useSettingsStore.getState().loadSecrets();
+      if (cancelled) return;
+      setIpcToken(token);
+
+      checkOllamaStatus(token);
+      pollIndexingStatus(token);
+      useSettingsStore.getState().pushBackendSettings(token);
+
+      window.smartnotes.onFileConflict((noteId) => setConflictNoteId(noteId));
+      window.smartnotes.onSyncRefresh(() => { void useNotesStore.getState().fetchNotes(); });
+      window.smartnotes.onBackendStatus((status) => {
+        if (status === 'ready') void useNotesStore.getState().fetchNotes();
+      });
+
+      timers.push(setInterval(() => checkOllamaStatus(token), 30000));
+      timers.push(setInterval(() => pollIndexingStatus(token), 2000));
     }
-    init();
+    void init();
+    return () => {
+      cancelled = true;
+      timers.forEach(clearInterval);
+    };
   }, [setIpcToken, checkOllamaStatus, pollIndexingStatus]);
 
   useEffect(() => {
@@ -151,19 +141,22 @@ const App: React.FC = () => {
       {conflictNoteId && (
         <ConflictModal
           noteTitle={notes.find(n => n.id === conflictNoteId)?.title || 'Untitled'}
-          onKeepMine={() => {
-            // Force a save from the current editor state to overwrite file
-            const editorState = useNotesStore.getState().notes.find(n => n.id === conflictNoteId);
-            if (editorState) {
-               // Make sure activeNoteId is set before updating
-               useNotesStore.getState().setActiveNote(conflictNoteId);
-               useNotesStore.getState().updateActiveNote(editorState.title, editorState.content);
+          onKeepMine={async () => {
+            // Write the editor's current (unsaved) text over the file
+            const store = useNotesStore.getState();
+            if (store.draft?.noteId === conflictNoteId) {
+              await store.saveDraft();
+            } else {
+              const note = store.notes.find((n) => n.id === conflictNoteId);
+              if (note) {
+                store.setDraft(note.title, note.content);
+                await store.saveDraft();
+              }
             }
             setConflictNoteId(null);
           }}
-          onUseFile={() => {
-            // Reload from DB
-            useNotesStore.getState().fetchNotes();
+          onUseFile={async () => {
+            await useNotesStore.getState().reloadFromFile(conflictNoteId);
             setConflictNoteId(null);
           }}
           onDismiss={() => setConflictNoteId(null)}
