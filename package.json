@@ -1,6 +1,6 @@
 {
   "name": "dogear",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Dogear: a local-first Markdown notes app for Mac with search by meaning and phone access.",
   "main": "dist/src/main.js",
   "scripts": {
