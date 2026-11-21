@@ -84,40 +84,60 @@ async def keyword_search(query: str, k: int = 10) -> list[dict]:
         await db.close()
 
 
-def reciprocal_rank_fusion(vector_results: list, keyword_results: list, k: int = 60) -> list[dict]:
-    """
-    Merge vector and keyword results using Reciprocal Rank Fusion.
-    RRF score = sum(1 / (k + rank)) across result lists.
-    """
-    scores = {}  # note_id -> {score, data}
+def _query_terms(query: str) -> list[str]:
+    terms = [t for t in re.findall(r"\w+", query.lower()) if t not in _STOPWORDS and len(t) > 1]
+    return list(dict.fromkeys(terms)) or re.findall(r"\w+", query.lower())
 
-    # Score vector results
-    for rank, item in enumerate(vector_results):
+
+def _term_coverage(terms: list[str], text: str) -> float:
+    """Share of query terms that appear in the text (prefix match, so "rise" matches "rising")."""
+    if not terms:
+        return 0.0
+    words = set(re.findall(r"\w+", text.lower()))
+    def hit(term: str) -> bool:
+        stem = term[:max(4, len(term) - 2)]
+        return any(w.startswith(stem) for w in words)
+    return sum(hit(t) for t in terms) / len(terms)
+
+
+KEYWORD_WEIGHT = 0.5
+# A result must clear both bars to be shown: an absolute minimum (weaker matches are
+# noise) and a share of the best match. Measured on backend/tests/fixtures/sample_notes.
+MIN_RELEVANCE = 0.18
+RELEVANCE_FLOOR = 0.2
+
+
+def reciprocal_rank_fusion(vector_results: list, keyword_results: list, k: int = 60, query: str = "") -> list[dict]:
+    """
+    Merge semantic and keyword results into one score per note.
+
+    - Semantic: the cosine similarity of the note's best-matching chunk. Using the
+      similarity itself (not just its position) keeps a clear semantic winner on top.
+      Each note counts once, so long notes with many chunks don't get extra votes.
+    - Keyword: weighted by how much of the query the note covers and by BM25 order,
+      so sharing one common word ("long") with the question adds little, while a note
+      matching most of the words gets a real boost.
+    """
+    scores = {}  # note_id -> {score, note_id, text, title?}
+
+    for item in vector_results:  # sorted by distance; first chunk per note is its best
         note_id = item["note_id"]
-        rrf_score = 1.0 / (k + rank + 1)
         if note_id not in scores:
-            scores[note_id] = {"score": 0, "note_id": note_id, "text": item.get("text", "")}
-        scores[note_id]["score"] += rrf_score
+            similarity = max(0.0, 1.0 - float(item.get("distance", 1.0)))
+            scores[note_id] = {"score": similarity, "note_id": note_id, "text": item.get("text", "")}
 
-    # Score keyword results
+    terms = _query_terms(query) if query else []
     for rank, item in enumerate(keyword_results):
         note_id = item["note_id"]
-        rrf_score = 1.0 / (k + rank + 1)
+        coverage = _term_coverage(terms, f"{item.get('title', '')} {item.get('content', '')}") if terms else 1.0
         if note_id not in scores:
-            scores[note_id] = {
-                "score": 0,
-                "note_id": note_id,
-                "text": item.get("content", "")[:500],
-                "title": item.get("title", ""),
-            }
-        scores[note_id]["score"] += rrf_score
-        # Prefer keyword result's title if available
-        if "title" in item:
+            # keep the full text so the snippet can centre on where the words matched
+            scores[note_id] = {"score": 0.0, "note_id": note_id, "text": item.get("content", "")}
+        scores[note_id]["score"] += KEYWORD_WEIGHT * coverage / (1 + 0.5 * rank)
+        if item.get("title"):
             scores[note_id]["title"] = item["title"]
 
-    # Sort by RRF score descending
-    ranked = sorted(scores.values(), key=lambda x: x["score"], reverse=True)
-    return ranked
+    return sorted(scores.values(), key=lambda x: x["score"], reverse=True)
 
 
 async def hybrid_search(query: str, k: int = 10) -> list[dict]:
@@ -130,7 +150,11 @@ async def hybrid_search(query: str, k: int = 10) -> list[dict]:
 
     vector_results, keyword_results = await asyncio.gather(vector_task, keyword_task)
 
-    merged = reciprocal_rank_fusion(vector_results, keyword_results)
+    merged = reciprocal_rank_fusion(vector_results, keyword_results, query=query)
+    # Drop results far weaker than the best match, so a search doesn't list every note
+    if merged:
+        floor = max(MIN_RELEVANCE, merged[0]["score"] * RELEVANCE_FLOOR)
+        merged = [m for i, m in enumerate(merged) if i == 0 or m["score"] >= floor]
 
     # Enrich with titles and drop vectors whose note no longer exists
     results = []
@@ -142,7 +166,7 @@ async def hybrid_search(query: str, k: int = 10) -> list[dict]:
             if not row:
                 continue
             item["title"] = row[0]
-            item["text"] = _strip_chunk_prefix(item.get("text", ""))
+            item["text"] = make_snippet(_strip_chunk_prefix(item.get("text", "")), row[0], query)
             results.append(item)
             if len(results) >= k:
                 break
@@ -159,6 +183,34 @@ def _strip_chunk_prefix(text: str) -> str:
     return text
 
 
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]")
+
+
+def make_snippet(text: str, title: str = "", query: str = "", size: int = 200) -> str:
+    """
+    Plain-text preview for search results: drops a leading heading that repeats the
+    title, strips Markdown syntax, and centres on the matched words when possible.
+    """
+    lines = [ln for ln in (text or "").splitlines() if ln.strip()]
+    if lines and lines[0].lstrip().startswith("#"):
+        heading = lines[0].lstrip("# ").strip().lower()
+        if title and heading.startswith(title.strip().lower()):
+            lines = lines[1:]
+    plain = "\n".join(lines)
+    plain = _WIKILINK.sub(lambda m: m.group(2) or m.group(1), plain)
+    plain = _MD_LINK.sub(r"\1", plain)
+    plain = re.sub(r"^\s{0,3}(#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s?)", "", plain, flags=re.M)
+    plain = re.sub(r"```.*?```", " ", plain, flags=re.S)
+    plain = re.sub(r"(\*\*|__|\*|_|`|~~)", "", plain)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    if query and len(plain) > size:
+        plain = _window_around_terms(plain, query, size)
+    elif len(plain) > size:
+        plain = plain[:size].rsplit(" ", 1)[0] + "…"
+    return plain
+
+
 def _window_around_terms(content: str, query: str, size: int) -> str:
     """For keyword-only hits: the part of the note around the first matching term."""
     lower = content.lower()
@@ -167,7 +219,8 @@ def _window_around_terms(content: str, query: str, size: int) -> str:
     if not positions or len(content) <= size:
         return content[:size]
     start = max(0, min(positions) - size // 4)
-    return ("…" if start else "") + content[start:start + size]
+    end = start + size
+    return ("…" if start else "") + content[start:end] + ("…" if end < len(content) else "")
 
 
 async def retrieve_context(query: str, k_notes: int = 5, per_note_chars: int = 2500,
@@ -181,7 +234,7 @@ async def retrieve_context(query: str, k_notes: int = 5, per_note_chars: int = 2
     vector_results, keyword_results = await asyncio.gather(
         vector_search(query, k=k_notes * 4), keyword_search(query, k=k_notes * 2)
     )
-    ranked = reciprocal_rank_fusion(vector_results, keyword_results)
+    ranked = reciprocal_rank_fusion(vector_results, keyword_results, query=query)
 
     chunks_by_note = defaultdict(dict)  # note_id -> {chunk_index: (distance, text)}
     for item in vector_results:

@@ -4,7 +4,6 @@ Copies files into the notes folder keeping their sub-folder structure, turns
 [[wikilinks]] into manual links, and queues background embedding.
 """
 import os
-import re
 import uuid
 import time
 import logging
@@ -16,6 +15,7 @@ from backend.services.files import (
     compute_hash, free_note_path, notes_root, read_text, sanitize_folder, write_atomic,
 )
 from backend.services.pipeline import embed_note
+from backend.services.links import rebuild_all_manual_links
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +34,6 @@ async def db_dep():
         yield db
     finally:
         await db.close()
-
-
-def extract_wikilinks(content: str) -> list[str]:
-    """Extract [[Target]], [[Target|alias]] and [[Target#heading]] targets."""
-    targets = []
-    for raw in re.findall(r"\[\[([^\]]+)\]\]", content):
-        target = raw.split("|", 1)[0].split("#", 1)[0].strip()
-        if target:
-            targets.append(target)
-    return targets
 
 
 @router.post("/folder")
@@ -102,21 +92,8 @@ async def import_folder(req: ImportRequest, background_tasks: BackgroundTasks, d
             imported.append({"id": note_id, "title": title, "folder": folder, "content": content})
             background_tasks.add_task(embed_note, note_id, title, folder, content)
 
-    # Wikilinks -> manual links (titles are matched case-insensitively, like Obsidian)
-    async with db.execute("SELECT id, title FROM notes") as cursor:
-        by_title = {}
-        for row in await cursor.fetchall():
-            by_title.setdefault(row["title"].lower(), row["id"])
-    now = int(time.time())
-    for item in imported:
-        for target in extract_wikilinks(item["content"]):
-            target_id = by_title.get(os.path.basename(target).lower())
-            if target_id and target_id != item["id"]:
-                await db.execute(
-                    "INSERT OR IGNORE INTO links (source_id, target_id, link_type, similarity_score, created_at) "
-                    "VALUES (?, ?, 'manual', 1.0, ?)",
-                    (item["id"], target_id, now),
-                )
+    # [[wikilinks]] -> links (titles match case-insensitively, like Obsidian)
+    await rebuild_all_manual_links(db)
     await db.commit()
 
     logger.info(f"Imported {len(imported)} notes from {source} ({len(skipped)} skipped)")

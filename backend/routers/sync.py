@@ -15,6 +15,7 @@ from backend.services.files import (
     compute_hash, folder_from_path, is_inside_notes_dir, read_text, sanitize_title,
 )
 from backend.services.pipeline import embed_note, delete_note_embeddings
+from backend.services.links import sync_manual_links, relink_mentions_of
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ async def handleFileSystemEvent(event: str, path: str, dirty_note_ids: list, db,
             "UPDATE notes SET content = ?, content_hash = ?, updated_at = ? WHERE id = ?",
             (content, current_hash, int(time.time()), note_id),
         )
+        await sync_manual_links(db, note_id, content)
         await db.commit()
         queue_embed(note_id, row["title"], row["folder"])
         return {"status": "processed", "action": "external_edit_applied", "note_id": note_id}
@@ -135,6 +137,8 @@ async def handleFileSystemEvent(event: str, path: str, dirty_note_ids: list, db,
                 "UPDATE notes SET file_path = ?, folder = ?, title = ?, updated_at = ? WHERE id = ?",
                 (path, folder, title, int(time.time()), note_id),
             )
+            if title != existing["title"]:
+                await relink_mentions_of(db, title)
             await db.commit()
             queue_embed(note_id, title, folder)
             return {"status": "processed", "action": "rename_detected", "note_id": note_id}
@@ -147,6 +151,8 @@ async def handleFileSystemEvent(event: str, path: str, dirty_note_ids: list, db,
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (note_id, stem, content, folder, now_ts, now_ts, path, current_hash),
     )
+    await sync_manual_links(db, note_id, content)
+    await relink_mentions_of(db, stem)
     await db.commit()
     queue_embed(note_id, stem, folder)
     return {"status": "processed", "action": "external_creation", "note_id": note_id}

@@ -29,7 +29,8 @@ interface NotesState {
   /** Bumped when the editor must reload the active note from the store */
   reloadToken: number;
   fetchNotes: () => Promise<void>;
-  createNote: (folder?: string) => Promise<void>;
+  createNote: (folder?: string, title?: string) => Promise<void>;
+  openNoteByTitle: (title: string) => Promise<void>;
   setActiveNote: (id: string | null) => Promise<void>;
   setDraft: (title: string, content: string) => void;
   saveDraft: () => Promise<boolean>;
@@ -94,14 +95,14 @@ export const useNotesStore = create<NotesState>((set, get) => {
       }
     },
 
-    createNote: async (folder = '') => {
+    createNote: async (folder = '', title = 'Untitled Note') => {
       if (!get().ipcToken) return;
       await get().saveDraft();
       try {
         const res = await fetch(apiUrl('/notes/'), {
           method: 'POST',
           headers: headers(true),
-          body: JSON.stringify({ title: 'Untitled Note', content: '', folder }),
+          body: JSON.stringify({ title, content: '', folder }),
         });
         if (!res.ok) throw new Error(await errorText(res));
         const note: Note = await res.json();
@@ -109,6 +110,18 @@ export const useNotesStore = create<NotesState>((set, get) => {
         set({ activeNoteId: note.id, draft: null, isDirty: false, saveError: null });
       } catch (e) {
         set({ saveError: `Could not create note: ${(e as Error).message}` });
+      }
+    },
+
+    // [[Wikilink]] click: open the note with that title, or create it
+    openNoteByTitle: async (title) => {
+      const wanted = title.trim().toLowerCase();
+      const match = get().notes.find((n) => n.title.trim().toLowerCase() === wanted);
+      if (match) {
+        await get().setActiveNote(match.id);
+      } else {
+        const current = get().notes.find((n) => n.id === get().activeNoteId);
+        await get().createNote(current?.folder || '', title.trim());
       }
     },
 

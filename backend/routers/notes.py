@@ -10,6 +10,7 @@ from backend.services.files import (
     compute_hash, sanitize_folder, free_note_path, write_atomic, is_inside_notes_dir, read_text,
 )
 from backend.services.pipeline import embed_note, delete_note_embeddings
+from backend.services.links import sync_manual_links, relink_mentions_of
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,8 @@ async def create_note(note: NoteCreate, background_tasks: BackgroundTasks, db=De
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (note_id, note.title, content, folder, now, now, file_path, content_hash),
     )
+    await sync_manual_links(db, note_id, content)
+    await relink_mentions_of(db, note.title)
     await db.commit()
 
     # 2. Disk
@@ -130,6 +133,9 @@ async def update_note(note_id: str, note_update: NoteUpdate, background_tasks: B
         "UPDATE notes SET title = ?, content = ?, folder = ?, updated_at = ?, file_path = ?, content_hash = ? WHERE id = ?",
         (new_title, new_content, new_folder, now, new_path, content_hash, note_id),
     )
+    await sync_manual_links(db, note_id, new_content)
+    if new_title != existing["title"]:
+        await relink_mentions_of(db, new_title)
     await db.commit()
 
     # 2. Rename/move, then write
@@ -176,6 +182,7 @@ async def reload_from_file(note_id: str, background_tasks: BackgroundTasks, db=D
         "UPDATE notes SET content = ?, content_hash = ?, updated_at = ? WHERE id = ?",
         (content, compute_hash(content), int(time.time()), note_id),
     )
+    await sync_manual_links(db, note_id, content)
     await db.commit()
     background_tasks.add_task(embed_note, note_id, existing["title"], existing["folder"] or "", content)
     return await _fetch(db, note_id)

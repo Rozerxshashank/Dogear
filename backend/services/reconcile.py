@@ -11,6 +11,7 @@ import logging
 from backend.db import get_db_connection
 from backend.services.files import compute_hash, folder_from_path, notes_root, read_text
 from backend.services.pipeline import embed_note, delete_note_embeddings
+from backend.services.links import rebuild_all_manual_links
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,8 @@ async def reconcile_notes_dir() -> dict:
                 to_embed.append((note_id, title, folder, content))
                 stats["created"] += 1
 
+        # [[wikilinks]] -> links for every note (also upgrades notes saved by older versions)
+        await rebuild_all_manual_links(db)
         await db.commit()
     finally:
         await db.close()

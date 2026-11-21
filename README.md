@@ -12,6 +12,7 @@ Everything stays on your local machine for privacy. There are no cloud dependenc
 * **Auto-linking:** The app automatically finds related notes and links them for you.
 * **Knowledge Graph:** Visualize the connections between all your notes.
 * **GitHub Sync:** Easily backup or sync your notes to a private GitHub repository.
+* **Phone access:** Read, search and write notes from your phone over your home Wi-Fi, with no cloud and no app to install.
 
 ## Development
 
@@ -56,6 +57,18 @@ npm run dist
 This bundles the backend with PyInstaller, then packages the app with electron-builder into `release/` (DMG/ZIP on macOS, NSIS installer on Windows, AppImage on Linux). Build each platform on that platform; pushing a `v*` tag builds all three in CI.
 
 Before distributing publicly, add code-signing secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, and for macOS notarization `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`) and an app icon in `build/`.
+
+## Phone access
+
+In the app, open **Settings → Phone**, turn on **Allow phone access** and choose **Connect a phone**. Scan the QR code with the phone's camera (or open the address shown and type the code).
+
+- The Mac serves a small web app on port 47800 of your local network, only while phone access is on.
+- Only devices on private networks can connect. Pairing codes work once and expire after 5 minutes.
+- Each phone gets its own key (only a hash is stored); remove phones from Settings at any time.
+- Phones can read, search, create and edit notes, but not delete them. An edit is refused if the note has unsaved changes on the Mac or changed since the phone opened it.
+- Traffic is plain HTTP on your Wi-Fi, so use it on networks you trust. It works while the Mac is awake and on the same network.
+
+The server is `src/phoneServer.ts`; the phone app is `phone/index.html`.
 
 ## Where things are stored
 

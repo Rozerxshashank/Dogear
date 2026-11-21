@@ -11,6 +11,19 @@ from backend.db import get_db_connection, get_setting
 logger = logging.getLogger(__name__)
 
 DEFAULT_THRESHOLD = 0.75
+MAX_AUTO_LINKS = 5
+
+# The threshold setting is expressed on the scale of Ollama's nomic-embed-text.
+# Other models produce lower cosine similarities for equally related text, so the
+# setting is shifted per model. MiniLM: related notes score ~0.45-0.65 and unrelated
+# ones ~0.30 (measured on the sample notes in backend/tests/fixtures).
+MODEL_THRESHOLD_OFFSET = {"sbert:": -0.33, "mistral:": -0.10}
+MIN_THRESHOLD = 0.30
+
+
+def effective_threshold(model: str, threshold: float) -> float:
+    offset = next((v for prefix, v in MODEL_THRESHOLD_OFFSET.items() if model.startswith(prefix)), 0.0)
+    return max(MIN_THRESHOLD, threshold + offset)
 
 
 async def get_autolink_threshold() -> float:
@@ -31,7 +44,7 @@ async def run_autolink(note_id: str, model: str, threshold: float = None):
     """
     if threshold is None:
         threshold = await get_autolink_threshold()
-    max_distance = 1.0 - threshold
+    max_distance = 1.0 - effective_threshold(model, threshold)
 
     # Get embeddings for this note's chunks
     note_embeddings = await asyncio.to_thread(get_all_embeddings_for_note, note_id, model)
@@ -54,11 +67,12 @@ async def run_autolink(note_id: str, model: str, threshold: float = None):
             if r["distance"] <= max_distance:
                 similar_notes.add((r["note_id"], 1.0 - r["distance"]))  # (target_id, similarity)
 
-    # Keep highest similarity per target note
+    # Keep highest similarity per target note, and only the strongest few
     best_scores = {}
     for target_id, score in similar_notes:
         if target_id not in best_scores or score > best_scores[target_id]:
             best_scores[target_id] = score
+    best_scores = dict(sorted(best_scores.items(), key=lambda kv: kv[1], reverse=True)[:MAX_AUTO_LINKS])
 
     db = await get_db_connection()
     try:

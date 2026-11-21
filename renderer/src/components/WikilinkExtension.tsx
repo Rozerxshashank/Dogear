@@ -1,6 +1,7 @@
 import React from 'react';
 import { Node, mergeAttributes, nodeInputRule } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { useNotesStore } from '../store/notesStore';
 
 const WIKILINK_SOURCE = /^\[\[([^\]\n|#]+)(?:#[^\]\n|]*)?(?:\|([^\]\n]+))?\]\]/;
 
@@ -69,8 +70,28 @@ export const WikilinkExtension = Node.create({
   },
 } as any);
 
-const WikilinkNodeView = (props: any) => (
-  <NodeViewWrapper as="span" className="wikilink" style={{ color: 'var(--color-accent)', cursor: 'pointer', textDecoration: 'underline' }}>
-    [[{props.node.attrs.label ?? props.node.attrs.target}]]
-  </NodeViewWrapper>
-);
+const WikilinkNodeView = (props: any) => {
+  const target: string = props.node.attrs.target ?? props.node.attrs.label ?? '';
+  const exists = useNotesStore((s) => s.notes.some((n) => n.title.trim().toLowerCase() === target.trim().toLowerCase()));
+  const open = () => { void useNotesStore.getState().openNoteByTitle(target); };
+  return (
+    <NodeViewWrapper
+      as="span"
+      className="wikilink"
+      role="link"
+      tabIndex={0}
+      title={exists ? `Open "${target}"` : `Create "${target}"`}
+      onClick={open}
+      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') open(); }}
+      style={{
+        color: 'var(--color-accent)',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        textDecorationStyle: exists ? 'solid' : 'dashed',
+        opacity: exists ? 1 : 0.75,
+      }}
+    >
+      [[{props.node.attrs.label ?? target}]]
+    </NodeViewWrapper>
+  );
+};

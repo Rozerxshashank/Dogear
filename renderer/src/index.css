@@ -237,3 +237,9 @@ button:focus-visible, div[tabindex]:focus-visible, input:focus-visible {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
   opacity: 1 !important;
 }
+
+/* A note body that starts with "# <its title>" would show the title twice; the
+   heading stays in the file but is hidden under the title field. */
+.hide-title-heading .ProseMirror > h1:first-child {
+  display: none;
+}

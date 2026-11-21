@@ -30,15 +30,15 @@ async def get_graph(db=Depends(db_dep)):
                 "val": max(1, word_count // 10),  # Scale down for rendering
             })
 
-    edges = []
+    # One edge per pair of notes. A typed [[link]] wins over an automatic one.
+    edges_by_pair = {}
     async with db.execute("SELECT source_id, target_id, link_type, similarity_score FROM links") as cursor:
-        rows = await cursor.fetchall()
-        for row in rows:
-            edges.append({
-                "source": row[0],
-                "target": row[1],
-                "link_type": row[2],
-                "value": row[3] or 0.5,
-            })
+        for source, target, link_type, score in await cursor.fetchall():
+            key = tuple(sorted((source, target)))
+            current = edges_by_pair.get(key)
+            if current is None or (link_type == "manual" and current["link_type"] != "manual") or \
+                    (link_type == current["link_type"] and (score or 0) > current["value"]):
+                edges_by_pair[key] = {"source": source, "target": target, "link_type": link_type, "value": score or 0.5}
+    edges = list(edges_by_pair.values())
 
     return {"nodes": nodes, "edges": edges}

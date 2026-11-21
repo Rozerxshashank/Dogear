@@ -8,7 +8,8 @@
   <meta property="og:title" content="SmartNotes for Mac" />
   <meta property="og:description" content="Plain Markdown files on your Mac, searchable by meaning. Free and open source." />
   <meta property="og:image" content="img/editor.jpg" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c1b19'/%3E%3Cpath d='M10 9h9l4 4v10H10z' fill='none' stroke='%23f6f4ef' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" href="img/favicon.png" />
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
@@ -56,7 +57,8 @@
 
     /* Top bar */
     .top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; font-size: 15px; }
-    .wordmark { font-family: var(--serif); font-size: 22px; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+    .wordmark { display: inline-flex; align-items: center; gap: 10px; font-family: var(--serif); font-size: 22px; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+    .wordmark img { width: 28px; height: 28px; }
     .top nav { display: flex; gap: 26px; }
     .top nav a { color: var(--ink-soft); text-decoration: none; }
     .top nav a:hover { color: var(--ink); }
@@ -139,6 +141,26 @@
     footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     footer a { color: var(--ink-faint); }
 
+    /* Phone section */
+    .phones { display: flex; gap: 22px; justify-content: center; align-items: flex-start; }
+    .phone {
+      width: 230px; border-radius: 34px; padding: 9px; background: #121211;
+      box-shadow: var(--shot-shadow), inset 0 0 0 1px rgba(255,255,255,.08); flex-shrink: 0;
+    }
+    .phone img { border-radius: 26px; width: 100%; }
+    .phone.offset { margin-top: 56px; }
+    .steps { list-style: none; padding: 0; margin: 24px 0 0; counter-reset: step; }
+    .steps li { counter-increment: step; position: relative; padding: 0 0 18px 40px; color: var(--ink-soft); }
+    .steps li::before {
+      content: counter(step); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; border-radius: 50%;
+      border: 1px solid var(--rule); display: grid; place-items: center; font-size: 13px; font-weight: 600; color: var(--ink);
+    }
+    .steps b { color: var(--ink); font-weight: 600; }
+    .new-tag {
+      display: inline-block; font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase;
+      color: var(--green); margin-bottom: 12px;
+    }
+
     @media (max-width: 860px) {
       .split, .split.flip { grid-template-columns: 1fr; gap: 36px; }
       .split.flip > :first-child { order: 0; }
@@ -154,15 +176,19 @@
       .hero-shot { margin-top: 44px; margin-right: -16px; }
       .hero-shot .frame { border-radius: 10px 0 0 10px; border-right: 0; }
       .facts li { grid-template-columns: 1fr; gap: 2px; }
+      .phone { width: 46%; border-radius: 26px; padding: 6px; }
+      .phone img { border-radius: 21px; }
+      .phone.offset { margin-top: 36px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="top">
-      <a class="wordmark" href="#">SmartNotes</a>
+      <a class="wordmark" href="#"><img src="img/favicon.png" width="28" height="28" alt="" />SmartNotes</a>
       <nav aria-label="Main">
         <a href="#search">Search</a>
+        <a href="#phone">Phone</a>
         <a href="#files">Your files</a>
         <a href="#questions">Questions</a>
         <a class="keep" href="https://github.com/Rozerxshashank/Smartnotes-poc">GitHub</a>
@@ -257,6 +283,38 @@ Open questions: see [[Pricing notes]].</span></pre>
         </div>
       </section>
 
+      <section class="story" id="phone">
+        <div class="split">
+          <div>
+            <span class="new-tag">New in 1.1</span>
+            <h2>Your notes on your phone. No cloud.</h2>
+            <p>
+              Most apps that keep notes on your computer make you pay for sync, or hand your notes to someone's server.
+              SmartNotes skips both: your phone talks straight to your Mac over your home Wi-Fi.
+            </p>
+            <ol class="steps">
+              <li>In SmartNotes on your Mac, open <b>Settings → Phone</b> and turn it on.</li>
+              <li>Point your phone's camera at the QR code. That's the whole setup. No app to install, no account.</li>
+              <li>Read, search and write notes from your phone. Changes show up on your Mac straight away.</li>
+            </ol>
+            <p style="font-size:15px;color:var(--ink-faint);margin-top:4px">
+              Works while your Mac is awake and on the same Wi-Fi. Phones can't delete notes, and an edit never
+              overwrites unsaved changes on your Mac.
+            </p>
+          </div>
+          <div class="phones" aria-label="SmartNotes on a phone">
+            <div class="phone">
+              <img src="img/phone-search.jpg" width="780" height="1688" loading="lazy"
+                   alt="Phone search for 'how long should bread rise' with Sourdough as the first result." />
+            </div>
+            <div class="phone offset">
+              <img src="img/phone-note.jpg" width="780" height="1688" loading="lazy"
+                   alt="The note Q3 planning open on a phone, with headings, a list and links to other notes." />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="story" id="ai">
         <div class="measure">
           <h2>Ask your notes a question.</h2>
@@ -280,7 +338,8 @@ Open questions: see [[Pricing notes]].</span></pre>
           <div>
             <p>No. Notes, the search index and settings stay on your Mac. The only time text leaves your computer is if
             you add a cloud AI key and use chat, in which case the passages relevant to your question go to that provider.
-            GitHub backup only runs when you press Push.</p>
+            GitHub backup only runs when you press Push. Phone access, if you turn it on, goes directly between your
+            phone and your Mac on your own Wi-Fi.</p>
           </div>
         </details>
         <details>
@@ -312,6 +371,15 @@ Open questions: see [[Pricing notes]].</span></pre>
           <div>
             <p>Not yet. This release is built for Apple Silicon Macs (M1 and newer). Windows and Intel builds are planned;
             <a href="https://github.com/Rozerxshashank/Smartnotes-poc/issues">open an issue</a> if you'd use one, so we know to prioritise it.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Is there a phone app?</summary>
+          <div>
+            <p>You don't need one. Turn on <b>Settings → Phone</b> on your Mac and scan the QR code: your phone opens
+            SmartNotes in its browser, and you can add it to your home screen so it works like an app.</p>
+            <p>It works while your Mac is awake and on the same Wi-Fi. Traffic on your Wi-Fi isn't encrypted, so use it
+            on networks you trust, like home. You can disconnect a phone from Settings at any time.</p>
           </div>
         </details>
         <details>

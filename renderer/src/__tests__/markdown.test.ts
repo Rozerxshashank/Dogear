@@ -3,7 +3,7 @@ import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import { WikilinkExtension } from '../components/WikilinkExtension';
-import { getNoteContent, looksLikeLegacyHtml, setNoteContent } from '../markdown';
+import { getNoteContent, keepCaretOutOfTitleHeading, looksLikeLegacyHtml, setNoteContent, syncTitleHeading, titleHeadingMatches } from '../markdown';
 
 function makeEditor() {
   return new Editor({ extensions: [StarterKit, Markdown, WikilinkExtension] });
@@ -36,5 +36,38 @@ describe('note markdown round-trip', () => {
   test('markdown that starts with inline html-ish text is not treated as legacy', () => {
     expect(looksLikeLegacyHtml('# Heading\n\n<p>inline</p>')).toBe(false);
     expect(looksLikeLegacyHtml('<kbd>Ctrl</kbd> + C')).toBe(false);
+  });
+});
+
+describe('title shown once', () => {
+  test('a leading "# title" heading is detected (case-insensitive)', () => {
+    const editor = makeEditor();
+    setNoteContent(editor, '# Q3 Planning\n\nGoal for the quarter.');
+    expect(titleHeadingMatches(editor, 'q3 planning')).toBe(true);
+    expect(titleHeadingMatches(editor, 'Something else')).toBe(false);
+  });
+
+  test('notes without a matching heading are left alone', () => {
+    const editor = makeEditor();
+    setNoteContent(editor, 'Just text, no heading.');
+    expect(titleHeadingMatches(editor, 'Anything')).toBe(false);
+    expect(syncTitleHeading(editor, 'Anything', 'New')).toBe(false);
+  });
+
+  test('renaming the note renames the hidden heading in the file', () => {
+    const editor = makeEditor();
+    setNoteContent(editor, '# Old name\n\nBody stays.');
+    expect(syncTitleHeading(editor, 'Old name', 'New name')).toBe(true);
+    expect(getNoteContent(editor).trim()).toBe('# New name\n\nBody stays.');
+  });
+
+  test('the cursor is moved out of the hidden heading', () => {
+    const editor = makeEditor();
+    setNoteContent(editor, '# Only a title');
+    editor.commands.setTextSelection(2);
+    keepCaretOutOfTitleHeading(editor);
+    const heading = editor.state.doc.firstChild!;
+    expect(editor.state.selection.from).toBeGreaterThanOrEqual(heading.nodeSize);
+    expect(editor.state.doc.childCount).toBe(2); // an empty paragraph was added to type into
   });
 });

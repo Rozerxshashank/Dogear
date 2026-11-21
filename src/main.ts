@@ -8,6 +8,8 @@ import { spawn, ChildProcess } from 'child_process';
 import * as chokidar from 'chokidar';
 import { getAllSecrets, getSecret, setSecret } from './secrets';
 import * as gitSync from './gitSync';
+import * as QRCode from 'qrcode';
+import { PhoneServer, lanAddresses } from './phoneServer';
 
 // Only one SmartNotes may run at a time: two backends would fight over the same files.
 if (!app.requestSingleInstanceLock()) {
@@ -252,6 +254,58 @@ function setupWatcher() {
 
 let syncInProgress = false;
 
+// --- Phone access (off unless the user turns it on in Settings) ---
+const PHONE_PORT = 47800; // stable, so a phone's bookmark keeps working
+let phone: PhoneServer | null = null;
+const phoneSettingsPath = () => path.join(app.getPath('userData'), 'phone-settings.json');
+
+function phoneEnabledSetting(): boolean {
+  try {
+    return JSON.parse(fs.readFileSync(phoneSettingsPath(), 'utf-8')).enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function getPhone(): PhoneServer {
+  if (!phone) {
+    phone = new PhoneServer({
+      dataDir: app.getPath('userData'),
+      phoneDir: app.isPackaged ? path.join(process.resourcesPath, 'phone') : path.join(app.getAppPath(), 'phone'),
+      backendUrl,
+      ipcToken,
+      isNoteDirty: (id) => dirtyNoteIds.has(id),
+      onNotesChanged: () => mainWindow?.webContents.send('sync-refresh'),
+      onDevicesChanged: () => mainWindow?.webContents.send('phone-devices-changed'),
+      preferredPort: PHONE_PORT,
+    });
+  }
+  return phone;
+}
+
+function phoneState() {
+  const p = getPhone();
+  return {
+    enabled: p.isRunning,
+    port: p.port,
+    addresses: lanAddresses(),
+    devices: p.listDevices(),
+  };
+}
+
+async function setPhoneEnabled(enabled: boolean) {
+  const p = getPhone();
+  if (enabled) {
+    const port = await p.start();
+    log(`[Phone] listening on port ${port}`);
+  } else {
+    await p.stop();
+    log('[Phone] stopped');
+  }
+  fs.writeFileSync(phoneSettingsPath(), JSON.stringify({ enabled }), { mode: 0o600 });
+  return phoneState();
+}
+
 function registerIpc() {
   ipcMain.handle('get-ipc-token', () => ipcToken);
   ipcMain.handle('get-backend-url', () => backendUrl());
@@ -283,6 +337,26 @@ function registerIpc() {
     }
   });
 
+  ipcMain.handle('phone:get-state', () => phoneState());
+  ipcMain.handle('phone:set-enabled', (_e, enabled: boolean) => setPhoneEnabled(enabled === true));
+  ipcMain.handle('phone:revoke', (_e, id: string) => {
+    getPhone().revokeDevice(String(id));
+    return phoneState();
+  });
+  ipcMain.handle('phone:pair', async () => {
+    const p = getPhone();
+    if (!p.isRunning) await setPhoneEnabled(true);
+    const [address] = lanAddresses();
+    if (!address) {
+      return { error: "This Mac isn't connected to a Wi-Fi or local network." };
+    }
+    const { code, expiresAt } = p.createPairingCode();
+    // The code travels in the URL fragment, which browsers never send to the server or log
+    const url = `http://${address}:${p.port}/#pair?code=${code}`;
+    const qr = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+    return { code, expiresAt, url, address: `http://${address}:${p.port}`, qrSvg: qr };
+  });
+
   ipcMain.on('set-dirty', (_e, { noteId, isDirty }: { noteId: string; isDirty: boolean }) => {
     if (typeof noteId !== 'string') return;
     if (isDirty) dirtyNoteIds.add(noteId);
@@ -298,6 +372,10 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(async () => {
+  // Packaged builds get the icon from the bundle; show it in dev too instead of Electron's
+  if (!app.isPackaged && process.platform === 'darwin') {
+    app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'));
+  }
   fs.mkdirSync(SMARTNOTES_DIR, { recursive: true });
   backendPort = Number(process.env.SMARTNOTES_PORT) || (await findFreePort());
   registerIpc();
@@ -308,6 +386,9 @@ app.whenReady().then(async () => {
   if (backendReady) {
     createWindow(false);
     setupWatcher();
+    if (phoneEnabledSetting()) {
+      setPhoneEnabled(true).catch((e) => log(`[Phone] could not start: ${e.message}`));
+    }
   } else {
     log('Backend did not become healthy');
     createWindow(true);
@@ -328,6 +409,7 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', () => {
+  void phone?.stop();
   if (backendProcess && backendProcess.exitCode === null) {
     backendProcess.kill();
   }

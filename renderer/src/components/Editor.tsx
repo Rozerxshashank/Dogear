@@ -6,7 +6,7 @@ import { useNotesStore } from '../store/notesStore';
 import { WikilinkExtension } from './WikilinkExtension';
 import { SlashCommand } from './SlashCommand';
 import { EditorToolbar } from './EditorToolbar';
-import { getNoteContent, setNoteContent } from '../markdown';
+import { getNoteContent, keepCaretOutOfTitleHeading, setNoteContent, syncTitleHeading, titleHeadingMatches } from '../markdown';
 
 const AUTOSAVE_MS = 1000;
 
@@ -21,6 +21,14 @@ export const Editor: React.FC = () => {
   const saveDraft = useNotesStore((state) => state.saveDraft);
 
   const [localTitle, setLocalTitle] = useState('');
+  // True when the note body starts with "# <title>": that heading is hidden so the title shows once
+  const [hideTitleHeading, setHideTitleHeading] = useState(false);
+  const hideRef = useRef(false);
+  const refreshTitleHeading = (ed: any) => {
+    const hide = !!ed && titleHeadingMatches(ed, titleRef.current);
+    hideRef.current = hide;
+    setHideTitleHeading(hide);
+  };
   const titleRef = useRef('');
   const loadingRef = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,9 +42,13 @@ export const Editor: React.FC = () => {
     extensions: [StarterKit, Markdown, WikilinkExtension, SlashCommand],
     content: '',
     onUpdate: ({ editor }) => {
+      refreshTitleHeading(editor);
       if (loadingRef.current) return;
       setDraft(titleRef.current, getNoteContent(editor as any));
       scheduleSave();
+    },
+    onSelectionUpdate: ({ editor }) => {
+      if (hideRef.current && !loadingRef.current) keepCaretOutOfTitleHeading(editor as any);
     },
   });
 
@@ -50,6 +62,7 @@ export const Editor: React.FC = () => {
     loadingRef.current = false;
     setLocalTitle(note?.title ?? '');
     titleRef.current = note?.title ?? '';
+    refreshTitleHeading(editor);
     loadedFor.current = note ? `${note.id}:${note.updated_at}` : null;
   }, [activeNoteId, reloadToken, editor]);
 
@@ -68,6 +81,7 @@ export const Editor: React.FC = () => {
       setLocalTitle(activeNote.title);
       titleRef.current = activeNote.title;
     }
+    refreshTitleHeading(editor);
   }, [activeNote?.updated_at, editor, isDirty]);
 
   // Save pending edits on unmount and before the window closes
@@ -105,11 +119,16 @@ export const Editor: React.FC = () => {
           type="text"
           value={localTitle}
           onChange={(e) => {
+            const previous = titleRef.current;
             setLocalTitle(e.target.value);
             titleRef.current = e.target.value;
             if (editor) {
-              setDraft(e.target.value, getNoteContent(editor as any));
-              scheduleSave();
+              // Keep a hidden "# title" heading in step with the title (this also saves via onUpdate)
+              if (!syncTitleHeading(editor as any, previous, e.target.value)) {
+                setDraft(e.target.value, getNoteContent(editor as any));
+                scheduleSave();
+                refreshTitleHeading(editor);
+              }
             }
           }}
           style={{
@@ -136,7 +155,7 @@ export const Editor: React.FC = () => {
         </div>
       </div>
       <EditorToolbar editor={editor} />
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className={hideTitleHeading ? 'hide-title-heading' : undefined} />
     </div>
   );
 };

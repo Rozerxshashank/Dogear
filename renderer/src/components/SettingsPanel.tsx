@@ -3,6 +3,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { Settings, Check, X, FolderInput, Loader2 } from 'lucide-react';
 import { useNotesStore } from '../store/notesStore';
 import { apiUrl } from '../api';
+import { PhoneSection } from './PhoneSection';
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const settings = useSettingsStore();
@@ -128,6 +129,8 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
               />
             )}
           </section>
+
+          <PhoneSection />
 
           {/* GitHub */}
           <section>

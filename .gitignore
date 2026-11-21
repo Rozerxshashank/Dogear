@@ -12,7 +12,7 @@ chroma_db/
 .DS_Store
 SmartNotes_Project_Spec.md
 dist-backend/
-build/
+build/pyinstaller/
 release/
 resources/models/
 .pytest_cache/
